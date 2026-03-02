@@ -19,6 +19,7 @@ type RunCommandOptions = {
   projectName?: string;
   remoteRoot: string;
   runCommand: string;
+  cudaDevices?: string;
   keepRemote?: boolean;
 };
 
@@ -119,7 +120,10 @@ export function createRunCommands(options: RunCommandOptions): string[] {
     options.projectName ?? inferProjectName(options.localPath);
   const remoteRoot = normalizeRemoteRoot(options.remoteRoot);
   const remoteProjectPath = `${remoteRoot}/${projectName}`;
-  const remoteRunScript = `cd ${remoteProjectPath} && ${options.runCommand}`;
+  const runCommandWithCuda = options.cudaDevices
+    ? `CUDA_VISIBLE_DEVICES=${options.cudaDevices} ${options.runCommand}`
+    : options.runCommand;
+  const remoteRunScript = `cd ${remoteProjectPath} && ${runCommandWithCuda}`;
   const remoteTarget = `${options.user}@${options.machine}`;
   const sharedSshOptions =
     "-o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C";

@@ -46,6 +46,7 @@ export async function runConnectMode(
           username: config.user,
           gateway: config.gateway,
           display: config.display,
+          vncVm: config.vncVm,
           localPort: config.localPort,
           remotePort: getVncRemotePort(config.display),
         }),
@@ -88,7 +89,7 @@ export async function runConnectMode(
       username: config.user,
       gateway: config.gateway,
       machine,
-      remoteCommand: buildVncConnectRemoteCommand(config.display),
+      remoteCommand: buildVncConnectRemoteCommand(config.display, config.vncVm),
     });
 
     let resolvedDisplay = config.display;

@@ -1,6 +1,37 @@
 import { ensureRemoteCommand, getCurrentDirectoryName, parseTruthy } from "./helpers";
 import type { FlagMap } from "./types";
 
+function normalizeRemoteRoot(remoteRoot: string): string {
+  const trimmed = remoteRoot.trim().replace(/\/+$/, "");
+
+  if (!trimmed) {
+    throw new Error("Invalid remote root: path cannot be empty.");
+  }
+
+  if (trimmed === "~" || trimmed.startsWith("~/")) {
+    return trimmed;
+  }
+
+  if (
+    trimmed === "/home" ||
+    trimmed.startsWith("/home/") ||
+    trimmed === "/graphics/scratch2/students" ||
+    trimmed.startsWith("/graphics/scratch2/students/") ||
+    trimmed === "/graphics/scratch3/staff" ||
+    trimmed.startsWith("/graphics/scratch3/staff/") ||
+    trimmed === "/ceph" ||
+    trimmed.startsWith("/ceph/") ||
+    trimmed === "/var/tmp" ||
+    trimmed.startsWith("/var/tmp/")
+  ) {
+    return trimmed;
+  }
+
+  throw new Error(
+    "Invalid remote root: allowed roots are ~/..., /home/..., /graphics/scratch2/students/..., /graphics/scratch3/staff/..., /ceph/..., or /var/tmp/...",
+  );
+}
+
 function resolveBuildPresetCommand(presetRaw: string): string {
   const preset = presetRaw.toLowerCase();
 
@@ -18,6 +49,41 @@ function resolveBuildPresetCommand(presetRaw: string): string {
 
   throw new Error(
     `Unknown build preset: ${presetRaw}. Use debug | release | relwithdebinfo.`,
+  );
+}
+
+export function normalizeCudaDevices(
+  rawValue: string | undefined,
+): string | undefined {
+  if (!rawValue) {
+    return undefined;
+  }
+
+  const compact = rawValue
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(",");
+
+  if (!compact) {
+    return undefined;
+  }
+
+  if (!/^\d+(,\d+)*$/.test(compact)) {
+    throw new Error(
+      `Invalid cuda-devices: ${rawValue}. Use values like 0 or 0,1.`,
+    );
+  }
+
+  return compact;
+}
+
+export function resolveCudaDevices(
+  parsedFlags: FlagMap,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  return normalizeCudaDevices(
+    parsedFlags["cuda-devices"] ?? env.TUE_CUDA_VISIBLE_DEVICES,
   );
 }
 
@@ -39,7 +105,9 @@ export function resolveBuildSettings(
     env.TUE_PROJECT_NAME ??
     (localPath === "." || localPath === "./" ? getCurrentDirectoryName() : undefined);
 
-  const remoteRoot = parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00";
+  const remoteRoot = normalizeRemoteRoot(
+    parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00",
+  );
   const buildCommand =
     parsedFlags["build-cmd"] ??
     env.TUE_BUILD_CMD ??
@@ -68,6 +136,7 @@ export function resolveRunSettings(
   projectName?: string;
   remoteRoot: string;
   runCommand: string;
+  cudaDevices?: string;
   keepRemote: boolean;
 } {
   const projectName =
@@ -75,14 +144,18 @@ export function resolveRunSettings(
     env.TUE_PROJECT_NAME ??
     (localPath === "." || localPath === "./" ? getCurrentDirectoryName() : undefined);
 
-  const remoteRoot = parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00";
+  const remoteRoot = normalizeRemoteRoot(
+    parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00",
+  );
   const runCommand = ensureRemoteCommand(parsedFlags.cmd);
+  const cudaDevices = resolveCudaDevices(parsedFlags, env);
   const keepRemote = parseTruthy(parsedFlags["keep-remote"] ?? env.TUE_KEEP_REMOTE);
 
   return {
     projectName,
     remoteRoot,
     runCommand,
+    cudaDevices,
     keepRemote,
   };
 }
@@ -101,7 +174,9 @@ export function resolveSyncSettings(
     env.TUE_PROJECT_NAME ??
     (localPath === "." || localPath === "./" ? getCurrentDirectoryName() : undefined);
 
-  const remoteRoot = parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00";
+  const remoteRoot = normalizeRemoteRoot(
+    parsedFlags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? "~/exercise00",
+  );
   const keepRemote = parseTruthy(parsedFlags["keep-remote"] ?? env.TUE_KEEP_REMOTE);
 
   return {
@@ -113,4 +188,8 @@ export function resolveSyncSettings(
 
 export function buildCudaInfoRemoteCommand(): string {
   return "echo '== Host ==' && hostname && echo && echo '== GPU Summary (nvidia-smi) ==' && (command -v nvidia-smi >/dev/null 2>&1 && (nvidia-smi --query-gpu=name,driver_version,memory.total,utilization.gpu,temperature.gpu --format=csv,noheader 2>/dev/null || nvidia-smi) || echo 'nvidia-smi not found') && echo && echo '== CUDA Toolkit (nvcc) ==' && (command -v nvcc >/dev/null 2>&1 && nvcc --version || echo 'nvcc not found') && echo && echo '== Environment ==' && echo CUDA_HOME=${CUDA_HOME:-unset} && echo PATH=$PATH";
+}
+
+export function buildCudaListRemoteCommand(): string {
+  return "if ! command -v nvidia-smi >/dev/null 2>&1; then echo 'nvidia-smi not found' >&2; exit 127; fi; nvidia-smi --query-gpu=index,name,memory.total,memory.used,utilization.gpu --format=csv,noheader,nounits";
 }

@@ -5,21 +5,34 @@ import { printActiveIdentity, validateVncDisplay, getVncRemotePort } from "./hel
 import { promptInput, selectMenuOption } from "../ui";
 import { runMachineList } from "./pool";
 import { runConnectMode } from "./connect";
-import { runBuild, runLocalProject, runSync, runCudaInfo } from "./workflows";
+import {
+  runBuild,
+  runLocalProject,
+  runSync,
+  runEmptyRemoteTrash,
+} from "./workflows";
+import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
+import { resolveCudaDevices } from "./settings";
+import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { closeLocalSshTunnels } from "./tunnels";
 import {
-  buildPoolCommand,
   buildProxyJumpPoolCommand,
-  buildVncKillRemoteCommand,
   buildVncListRemoteCommand,
-  buildVncStartRemoteCommand,
 } from "../ssh";
 import { execute } from "./execution";
+import { rememberMachine } from "../machine-history";
 
 export async function runInteractive(flags: FlagMap): Promise<void> {
   const config = await resolveInteractiveConfig(flags, Bun.env);
   const logFile = flags["log-file"];
   maybeRememberUser(config.user, config.dryRun);
+  if (config.machine) {
+    try {
+      rememberMachine(config.machine);
+    } catch {
+      // Ignore invalid machine values here; command handlers will validate.
+    }
+  }
   printGatewayGuidance(config.gateway);
   printActiveIdentity(config);
 
@@ -37,6 +50,8 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
       { value: "run-local", label: "Run local project/script remotely" },
       { value: "sync", label: "Sync local project to remote machine" },
       { value: "cuda-info", label: "Show CUDA/GPU info on machine" },
+      { value: "cuda-select", label: "List GPUs and select CUDA device(s)" },
+      { value: "trash-empty", label: "Empty remote trash (~/.local/share/Trash)" },
       { value: "machines", label: "List known machines + pool-smi status" },
       { value: "exit", label: "Exit" },
     ],
@@ -98,32 +113,36 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
     const machine = await selectMachine(config.machine);
     warnOnRestrictedMachine(machine);
 
-    const remoteCommand =
-      vncAction === "start"
-        ? buildVncStartRemoteCommand(config.display)
-        : vncAction === "list"
-          ? buildVncListRemoteCommand()
-          : buildVncKillRemoteCommand(config.display);
-
-    execute(
-      buildProxyJumpPoolCommand({
-        username: config.user,
-        gateway: config.gateway,
-        machine,
-        remoteCommand,
-      }),
-      config.dryRun,
-      { logFile },
-    );
-
-    if (vncAction === "kill") {
-      closeLocalSshTunnels({
-        user: config.user,
-        gateway: config.gateway,
-        machine,
-        remotePort: getVncRemotePort(config.display),
-        dryRun: config.dryRun,
+    if (vncAction === "start") {
+      runVncStartOrReuse(config, machine, { logFile });
+    } else if (vncAction === "list") {
+      execute(
+        buildProxyJumpPoolCommand({
+          username: config.user,
+          gateway: config.gateway,
+          machine,
+          remoteCommand: buildVncListRemoteCommand(),
+        }),
+        config.dryRun,
+        { logFile },
+      );
+    } else {
+      const killedDisplay = await runVncKill(config, machine, {
+        requestedDisplay: config.display,
+        requestedDisplayExplicit: false,
+        allowInteractiveSelection: true,
+        logFile,
       });
+
+      if (killedDisplay !== undefined) {
+        closeLocalSshTunnels({
+          user: config.user,
+          gateway: config.gateway,
+          machine,
+          remotePort: getVncRemotePort(killedDisplay),
+          dryRun: config.dryRun,
+        });
+      }
     }
 
     return;
@@ -133,14 +152,13 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
     const machine = await selectMachine(config.machine);
     warnOnRestrictedMachine(machine);
     const remoteCmd = await promptInput('Remote command (example: nvidia-smi)');
-    execute(
-      buildPoolCommand({
-        username: config.user,
-        gateway: config.gateway,
+    runRemoteCommand(
+      {
+        ...config,
         machine,
-        remoteCommand: remoteCmd,
-      }),
-      config.dryRun,
+      },
+      remoteCmd,
+      resolveCudaDevices(flags, Bun.env),
       { logFile },
     );
     return;
@@ -176,5 +194,32 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
 
   if (action === "cuda-info") {
     await runCudaInfo(config, { logFile }, await selectMachine(config.machine));
+    return;
+  }
+
+  if (action === "cuda-select") {
+    await runCudaSelect(config, flags, { logFile }, await selectMachine(config.machine));
+    return;
+  }
+
+  if (action === "trash-empty") {
+    const machine = await selectMachine(config.machine);
+    warnOnRestrictedMachine(machine);
+    const confirm = await selectMenuOption("Confirm remote trash cleanup", [
+      {
+        value: "yes",
+        label: "Yes, empty trash now",
+      },
+      {
+        value: "no",
+        label: "No, cancel",
+      },
+    ], "no");
+
+    if (confirm === "yes") {
+      await runEmptyRemoteTrash(config, { logFile }, machine);
+    } else {
+      console.log("Cancelled remote trash cleanup.");
+    }
   }
 }

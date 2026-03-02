@@ -4,9 +4,7 @@ import { printGatewayGuidance, warnOnRestrictedMachine } from "../machines";
 import {
   buildProxyJumpPoolCommand,
   buildTunnelCommand,
-  buildVncKillRemoteCommand,
   buildVncListRemoteCommand,
-  buildVncStartRemoteCommand,
 } from "../ssh";
 import { supportsInteractivePrompts } from "../ui";
 import { execute } from "./execution";
@@ -15,7 +13,6 @@ import {
   ensureMachine,
   ensureRemoteCommand,
   getVncRemotePort,
-  parseDisplayToken,
   parseTruthy,
   printActiveIdentity,
   validateLocalPort,
@@ -33,22 +30,16 @@ import {
   selectOrAddUserProfile,
 } from "./user";
 import { loadUserProfiles, rememberUserProfile } from "../user-profiles";
+import { rememberMachine } from "../machine-history";
 import { handleBuildCommand, handleRunCommand, handleSyncCommand } from "./command-handlers";
+import { resolveCudaDevices } from "./settings";
 import {
-  runCudaInfo,
-  runRemoteCommand,
+  runEmptyRemoteTrash,
 } from "./workflows";
+import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
+import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { runConnectMode } from "./connect";
-
-function applyPositionalDisplayFlags(command: string | undefined, subcommand: string | undefined, positionals: string[], flags: FlagMap): void {
-  if (command === "vnc" && !flags.display && positionals.length >= 3) {
-    flags.display = parseDisplayToken(positionals[2]);
-  }
-
-  if (command === "tunnel" && subcommand === "close" && !flags.display && positionals.length >= 3) {
-    flags.display = parseDisplayToken(positionals[2]);
-  }
-}
+import { applyPositionalDisplayFlags } from "./positionals";
 
 async function handleUserCommand(subcommand: string | undefined, flags: FlagMap): Promise<void> {
   if (subcommand === "list" || !subcommand) {
@@ -102,6 +93,13 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
 
   const config = resolveConfig(flags, Bun.env);
   maybeRememberUser(config.user, config.dryRun);
+  if (config.machine) {
+    try {
+      rememberMachine(config.machine);
+    } catch {
+      // Ignore invalid machine values here; command handlers will validate.
+    }
+  }
   const logFile = flags["log-file"];
   printGatewayGuidance(config.gateway);
   printActiveIdentity(config);
@@ -132,9 +130,15 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
     }
 
     case "cuda": {
-      if (subcommand && subcommand !== "info") {
-        throw new Error("Unknown cuda subcommand. Use: cuda info");
+      if (subcommand && subcommand !== "info" && subcommand !== "select") {
+        throw new Error("Unknown cuda subcommand. Use: cuda info | cuda select");
       }
+
+      if (subcommand === "select") {
+        await runCudaSelect(config, flags, { logFile });
+        return;
+      }
+
       await runCudaInfo(config, { logFile });
       return;
     }
@@ -151,7 +155,27 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
       if (subcommand !== "run") {
         throw new Error("Unknown remote subcommand. Use: remote run");
       }
-      runRemoteCommand(config, ensureRemoteCommand(flags.cmd), { logFile });
+      runRemoteCommand(
+        config,
+        ensureRemoteCommand(flags.cmd),
+        resolveCudaDevices(flags, Bun.env),
+        { logFile },
+      );
+      return;
+    }
+
+    case "trash": {
+      if (subcommand && subcommand !== "empty") {
+        throw new Error("Unknown trash subcommand. Use: trash empty --yes");
+      }
+
+      if (!parseTruthy(flags.yes)) {
+        throw new Error(
+          "Refusing to empty trash without explicit confirmation. Re-run with --yes.",
+        );
+      }
+
+      await runEmptyRemoteTrash(config, { logFile });
       return;
     }
 
@@ -161,12 +185,7 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
       warnOnRestrictedMachine(machine);
 
       if (subcommand === "start") {
-        execute(buildProxyJumpPoolCommand({
-          username: config.user,
-          gateway: config.gateway,
-          machine,
-          remoteCommand: buildVncStartRemoteCommand(config.display),
-        }), config.dryRun, { logFile });
+        runVncStartOrReuse(config, machine, { logFile });
         return;
       }
 
@@ -181,19 +200,21 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
       }
 
       if (subcommand === "kill") {
-        execute(buildProxyJumpPoolCommand({
-          username: config.user,
-          gateway: config.gateway,
-          machine,
-          remoteCommand: buildVncKillRemoteCommand(config.display),
-        }), config.dryRun, { logFile });
+        const killedDisplay = await runVncKill(config, machine, {
+          requestedDisplay: config.display,
+          requestedDisplayExplicit: Boolean(flags.display || Bun.env.TUE_DISPLAY),
+          allowInteractiveSelection: false,
+          logFile,
+        });
 
         if (!parseTruthy(flags["keep-tunnel"])) {
           closeLocalSshTunnels({
             user: config.user,
             gateway: config.gateway,
             machine,
-            remotePort: getVncRemotePort(config.display),
+            remotePort: getVncRemotePort(
+              killedDisplay ?? config.display,
+            ),
             dryRun: config.dryRun,
           });
         }

@@ -112,6 +112,23 @@ describe("createRunCommands", () => {
       `ssh test-user@gateway.example.org pool-smi; printf 'Select machine (e.g. cgpool1907): '; read machine; [ -n "$machine" ] || { echo 'No machine selected.' >&2; exit 1; }; ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@$machine "rm -rf ~/exercise00/cuda-job && mkdir -p ~/exercise00" && scp -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -r -o ProxyJump=test-user@gateway.example.org './cuda-job' test-user@$machine:~/exercise00/cuda-job && ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@$machine "bash -lc 'cd ~/exercise00/cuda-job && python3 train.py'"`,
     );
   });
+
+  test("injects CUDA_VISIBLE_DEVICES into run command when provided", () => {
+    const commands = createRunCommands({
+      user: "test-user",
+      gateway: "gateway.example.org",
+      machine: "cgpool1907",
+      localPath: "./cuda-job",
+      projectName: "cuda-job",
+      remoteRoot: "~/exercise00",
+      runCommand: "python3 train.py",
+      cudaDevices: "0,1",
+    });
+
+    expect(commands[2]).toBe(
+      `ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@cgpool1907 "bash -lc 'cd ~/exercise00/cuda-job && CUDA_VISIBLE_DEVICES=0,1 python3 train.py'"`,
+    );
+  });
 });
 
 describe("createSyncCommands", () => {

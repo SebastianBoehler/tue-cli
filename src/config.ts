@@ -5,6 +5,7 @@ export type ResolvedConfig = {
   gateway: string;
   machine?: string;
   display: number;
+  vncVm?: string;
   localPort: number;
   dryRun: boolean;
 };
@@ -37,6 +38,26 @@ function parseNonNegativeInt(input: string, fieldName: string): number {
   return parsed;
 }
 
+function parseVncVm(input: string | undefined): string | undefined {
+  if (!input) {
+    return undefined;
+  }
+
+  const trimmed = input.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(trimmed)) {
+    throw new Error(
+      `Invalid vnc-vm: ${input}. Use a simple token like plasma, xfce, or gnome.`,
+    );
+  }
+
+  return trimmed;
+}
+
 export function resolveConfig(
   flags: Record<string, string>,
   env: Record<string, string | undefined>
@@ -52,6 +73,7 @@ export function resolveConfig(
 
   const displayRaw = flags.display ?? env.TUE_DISPLAY ?? "1";
   const display = parseNonNegativeInt(displayRaw, "display");
+  const vncVm = parseVncVm(flags["vnc-vm"] ?? env.TUE_VNC_VM);
 
   const localPortRaw = flags["local-port"] ?? env.TUE_LOCAL_PORT;
   const localPort = localPortRaw
@@ -65,6 +87,7 @@ export function resolveConfig(
     gateway,
     machine,
     display,
+    vncVm,
     localPort,
     dryRun,
   };

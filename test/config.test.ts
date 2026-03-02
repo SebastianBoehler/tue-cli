@@ -46,4 +46,22 @@ describe("resolveConfig", () => {
     expect(config.display).toBe(0);
     expect(config.localPort).toBe(5900);
   });
+
+  test("accepts vnc-vm from flags", () => {
+    const config = resolveConfig(
+      { user: "cli-user", "vnc-vm": "plasma" },
+      { TUE_GATEWAY: "sshgw.cs.uni-tuebingen.de" }
+    );
+
+    expect(config.vncVm).toBe("plasma");
+  });
+
+  test("rejects invalid vnc-vm values", () => {
+    expect(() =>
+      resolveConfig(
+        { user: "cli-user", "vnc-vm": "plasma;rm -rf /" },
+        { TUE_GATEWAY: "sshgw.cs.uni-tuebingen.de" }
+      )
+    ).toThrow("Invalid vnc-vm");
+  });
 });

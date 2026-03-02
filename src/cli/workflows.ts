@@ -5,11 +5,10 @@ import {
 } from "../build";
 import type { ResolvedConfig } from "../config";
 import { warnOnRestrictedMachine } from "../machines";
-import { buildPoolCommand } from "../ssh";
+import { buildEmptyTrashRemoteCommand, buildPoolCommand } from "../ssh";
 import { execute, executeAll } from "./execution";
 import { ensureMachine, hasLocalBinary } from "./helpers";
 import {
-  buildCudaInfoRemoteCommand,
   resolveBuildSettings,
   resolveRunSettings,
   resolveSyncSettings,
@@ -71,6 +70,7 @@ export async function runLocalProject(
     projectName: runSettings.projectName,
     remoteRoot: runSettings.remoteRoot,
     runCommand: runSettings.runCommand,
+    cudaDevices: runSettings.cudaDevices,
     keepRemote: runSettings.keepRemote,
   });
 
@@ -111,7 +111,7 @@ export async function runSync(
   executeAll(commands, config.dryRun, options);
 }
 
-export async function runCudaInfo(
+export async function runEmptyRemoteTrash(
   config: ResolvedConfig,
   options?: CommandRuntimeOptions,
   machineOverride?: string,
@@ -128,27 +128,7 @@ export async function runCudaInfo(
       username: config.user,
       gateway: config.gateway,
       machine,
-      remoteCommand: buildCudaInfoRemoteCommand(),
-    }),
-    config.dryRun,
-    options,
-  );
-}
-
-export function runRemoteCommand(
-  config: ResolvedConfig,
-  remoteCommand: string,
-  options?: CommandRuntimeOptions,
-): void {
-  const machine = ensureMachine(config.machine);
-  warnOnRestrictedMachine(machine);
-
-  execute(
-    buildPoolCommand({
-      username: config.user,
-      gateway: config.gateway,
-      machine,
-      remoteCommand,
+      remoteCommand: buildEmptyTrashRemoteCommand(),
     }),
     config.dryRun,
     options,

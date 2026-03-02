@@ -5,6 +5,7 @@ import {
   buildMachineSelectAndShellCommand,
   buildMachineSelectAndTunnelCommand,
   buildMachineSelectAndVncConnectCommand,
+  buildEmptyTrashRemoteCommand,
   buildVncConnectRemoteCommand,
   buildVncKillRemoteCommand,
   buildVncListRemoteCommand,
@@ -147,7 +148,8 @@ describe("ssh command building", () => {
     expect(cmd.includes('"$vnc_cmd" -list')).toBe(true);
     expect(cmd.includes(":2([[:space:]]|$)")).toBe(true);
     expect(cmd.includes('echo "VNC server already running on :2, reusing existing session."')).toBe(true);
-    expect(cmd.includes('start_output=$("$vnc_cmd" :2 2>&1)')).toBe(true);
+    expect(cmd.includes("run_vnc_start(){")).toBe(true);
+    expect(cmd.includes('start_output=$(run_vnc_start 2 2>&1)')).toBe(true);
     expect(cmd.includes("already running as :2|already running.*:2")).toBe(true);
     expect(cmd.includes('lock_file="/tmp/.X2-lock"')).toBe(true);
     expect(cmd.includes('lock_user="$(ps -o user= -p "$lock_pid" | awk')).toBe(true);
@@ -174,9 +176,20 @@ describe("ssh command building", () => {
 
     expect(cmd.includes('current_user="$(id -un)"')).toBe(true);
     expect(cmd.includes("display_is_listed")).toBe(true);
+    expect(cmd.includes("run_vnc_start(){")).toBe(true);
     expect(cmd.includes("Reusing your existing VNC session on :$selected_display.")).toBe(true);
     expect(cmd.includes("Could not find a free VNC display from :$requested_display to :99.")).toBe(true);
     expect(cmd.includes("TUE_VNC_DISPLAY=$selected_display")).toBe(true);
+  });
+
+  test("passes vnc vm mode to start/connect commands", () => {
+    const startCmd = buildVncStartRemoteCommand(3, "plasma");
+    const connectCmd = buildVncConnectRemoteCommand(3, "plasma");
+
+    expect(startCmd.includes("vnc_vm='plasma'")).toBe(true);
+    expect(startCmd.includes('-vm "$vnc_vm"')).toBe(true);
+    expect(connectCmd.includes("vnc_vm='plasma'")).toBe(true);
+    expect(connectCmd.includes('start_output=$(run_vnc_start "$scan_display" 2>&1)')).toBe(true);
   });
 
   test("builds pool-smi command with absolute-path fallback", () => {
@@ -199,6 +212,15 @@ describe("ssh command building", () => {
     expect(cmd.includes("command -v timeout")).toBe(true);
     expect(cmd.includes("timeout 5s")).toBe(true);
     expect(cmd.includes("head -n 400")).toBe(true);
+  });
+
+  test("builds remote trash cleanup command", () => {
+    const cmd = buildEmptyTrashRemoteCommand();
+
+    expect(cmd.includes('$HOME/.local/share/Trash/files')).toBe(true);
+    expect(cmd.includes('$HOME/.local/share/Trash/info')).toBe(true);
+    expect(cmd.includes("find \"$trash_files\" -mindepth 1 -maxdepth 1 -exec rm -rf {} +")).toBe(true);
+    expect(cmd.includes("find \"$trash_info\" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -delete")).toBe(true);
   });
 
   test("builds tunnel command with separate local and remote ports", () => {

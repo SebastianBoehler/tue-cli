@@ -98,6 +98,7 @@ export async function handleRunCommand(
       projectName: runSettings.projectName,
       remoteRoot: runSettings.remoteRoot,
       runCommand: runSettings.runCommand,
+      cudaDevices: runSettings.cudaDevices,
       keepRemote: runSettings.keepRemote,
     });
   } else if (supportsInteractivePrompts()) {
@@ -110,6 +111,7 @@ export async function handleRunCommand(
       projectName: runSettings.projectName,
       remoteRoot: runSettings.remoteRoot,
       runCommand: runSettings.runCommand,
+      cudaDevices: runSettings.cudaDevices,
       keepRemote: runSettings.keepRemote,
     });
   } else {
@@ -122,6 +124,7 @@ export async function handleRunCommand(
         projectName: runSettings.projectName,
         remoteRoot: runSettings.remoteRoot,
         runCommand: runSettings.runCommand,
+        cudaDevices: runSettings.cudaDevices,
         keepRemote: runSettings.keepRemote,
       }),
     ];

@@ -52,6 +52,8 @@ Supported env vars:
 - `TUE_GATEWAY` (default: `sshgw.cs.uni-tuebingen.de`)
 - `TUE_MACHINE`
 - `TUE_DISPLAY`
+- `TUE_VNC_VM` (optional, e.g. `plasma`)
+- `TUE_CUDA_VISIBLE_DEVICES` (optional, e.g. `0` or `0,1`)
 - `TUE_LOCAL_PORT`
 - `TUE_DRY_RUN`
 - `TUE_REMOTE_ROOT`
@@ -64,6 +66,8 @@ Supported env vars:
 
 If `--user` and `TUE_USER` are both missing, `tue-cli` uses a global saved username
 profile from `~/.config/tue-cli/profiles.json` (or `$XDG_CONFIG_HOME/tue-cli/profiles.json`).
+Machine selections are also remembered globally and shown in a `Recently used machines`
+option at the top of interactive machine selection.
 
 ## CG connectivity model (aligned with your document)
 
@@ -81,6 +85,7 @@ VNC/tunnel behavior:
 - remote VNC port is always `5900 + display`
 - local forwarded port is configurable (`1025..65535`)
 - display is validated to `0..10` (ports `5900..5910`)
+- optional VNC window manager/session mode is supported via `--vnc-vm <name>` (for KDE Plasma use `--vnc-vm plasma`)
 - `tue vnc kill` closes matching local SSH tunnel(s) by default; pass `--keep-tunnel` to skip that
 
 Machine listing behavior:
@@ -93,6 +98,15 @@ Sync/logging notes:
 
 - `tue sync` uses `rsync` locally (required).
 - `--log-file <path>` appends terminal output to a local logfile for `build`, `run`, `sync`, `cuda info`, and `remote run`.
+- use `--cuda-devices <list>` (or `TUE_CUDA_VISIBLE_DEVICES`) to scope CUDA programs to selected GPUs.
+- remote paths for uploaded projects (`--remote-root` / `TUE_REMOTE_ROOT`) are restricted to:
+  - `~/...`
+  - `/home/...`
+  - `/graphics/scratch2/students/...`
+  - `/graphics/scratch3/staff/...`
+  - `/ceph/...`
+  - `/var/tmp/...`
+- for cleanup in backed-up homes, use `tue trash empty --machine <host> --yes`.
 
 ## Commands (still supported)
 
@@ -106,16 +120,22 @@ tue user add --name boehlerse
 tue connect shell --machine cgpool1907
 tue connect tunnel --machine cgpool1907 --display 2 --local-port 5902
 tue connect vnc --machine cgpool1907 --display 2 --local-port 5902
+tue connect vnc --machine cgpool1907 --display 2 --vnc-vm plasma
 tue sync . --machine cgpool1907
 tue cuda info --machine cgpool1907
+tue cuda select --machine cgpool1907
 tue run . --machine cgpool1907 --cmd "python3 train.py"
+tue run . --machine cgpool1907 --cmd "python3 train.py" --cuda-devices 0
 tue run . --machine cgpool1907 --cmd "nvcc -O3 kernel.cu -o kernel && ./kernel"
 tue run . --machine cgpool1907 --cmd "./build/deviceQuery" --log-file ./logs/deviceQuery.log
 
 tue machines list
 tue machines list --live
 tue remote run --machine cgpool1907 --cmd "nvidia-smi"
+tue remote run --machine cgpool1907 --cmd "python3 train.py" --cuda-devices 1
+tue trash empty --machine cgpool1907 --yes
 tue vnc start --machine cgpool1907 --display 2
+tue vnc start --machine cgpool1907 --display 2 --vnc-vm plasma
 tue vnc list --machine cgpool1907
 tue vnc kill --machine cgpool1907 --display 2
 tue vnc kill :2 --machine cgpool1907
