@@ -39,10 +39,6 @@ function escapeForSingleQuotes(input: string): string {
   return input.replace(/'/g, "'\\''");
 }
 
-function escapeForDoubleQuotes(input: string): string {
-  return input.replace(/"/g, '\\"');
-}
-
 function quoteForShellSingle(input: string): string {
   return `'${escapeForSingleQuotes(input)}'`;
 }

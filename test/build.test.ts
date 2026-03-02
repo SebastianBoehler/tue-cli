@@ -4,6 +4,8 @@ import {
   createBuildCommandsWithMachineSelection,
   createRunCommands,
   createRunCommandsWithMachineSelection,
+  createSyncCommands,
+  createSyncCommandsWithMachineSelection,
 } from "../src/build";
 
 describe("createBuildCommands", () => {
@@ -108,6 +110,43 @@ describe("createRunCommands", () => {
 
     expect(command).toBe(
       `ssh test-user@gateway.example.org pool-smi; printf 'Select machine (e.g. cgpool1907): '; read machine; [ -n "$machine" ] || { echo 'No machine selected.' >&2; exit 1; }; ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@$machine "rm -rf ~/exercise00/cuda-job && mkdir -p ~/exercise00" && scp -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -r -o ProxyJump=test-user@gateway.example.org './cuda-job' test-user@$machine:~/exercise00/cuda-job && ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@$machine "bash -lc 'cd ~/exercise00/cuda-job && python3 train.py'"`,
+    );
+  });
+});
+
+describe("createSyncCommands", () => {
+  test("creates remote mkdir + rsync commands", () => {
+    const commands = createSyncCommands({
+      user: "test-user",
+      gateway: "gateway.example.org",
+      machine: "cgpool1907",
+      localPath: "./deviceQuery",
+      projectName: "deviceQuery",
+      remoteRoot: "~/exercise00",
+      keepRemote: false,
+    });
+
+    expect(commands[0]).toBe(
+      'ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@cgpool1907 "mkdir -p ~/exercise00/deviceQuery"',
+    );
+    expect(commands[1]).toBe(
+      "rsync -az --delete -e 'ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org' './deviceQuery/' 'test-user@cgpool1907:~/exercise00/deviceQuery/'",
+    );
+  });
+
+  test("creates interactive machine-selection sync command", () => {
+    const command = createSyncCommandsWithMachineSelection({
+      user: "test-user",
+      gateway: "gateway.example.org",
+      selectorCommand: "ssh test-user@gateway.example.org pool-smi",
+      localPath: "./deviceQuery",
+      projectName: "deviceQuery",
+      remoteRoot: "~/exercise00",
+      keepRemote: true,
+    });
+
+    expect(command).toBe(
+      `ssh test-user@gateway.example.org pool-smi; printf 'Select machine (e.g. cgpool1907): '; read machine; [ -n "$machine" ] || { echo 'No machine selected.' >&2; exit 1; }; ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@$machine "mkdir -p ~/exercise00/deviceQuery" && rsync -az -e 'ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org' './deviceQuery/' 'test-user@$machine:~/exercise00/deviceQuery/'`,
     );
   });
 });

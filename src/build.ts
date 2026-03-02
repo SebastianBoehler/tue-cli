@@ -22,6 +22,16 @@ type RunCommandOptions = {
   keepRemote?: boolean;
 };
 
+type SyncCommandOptions = {
+  user: string;
+  gateway: string;
+  machine: string;
+  localPath: string;
+  projectName?: string;
+  remoteRoot: string;
+  keepRemote?: boolean;
+};
+
 type BuildMachineSelectionCommandOptions = Omit<
   BuildCommandOptions,
   "machine"
@@ -30,6 +40,10 @@ type BuildMachineSelectionCommandOptions = Omit<
 };
 
 type RunMachineSelectionCommandOptions = Omit<RunCommandOptions, "machine"> & {
+  selectorCommand: string;
+};
+
+type SyncMachineSelectionCommandOptions = Omit<SyncCommandOptions, "machine"> & {
   selectorCommand: string;
 };
 
@@ -122,6 +136,27 @@ export function createRunCommands(options: RunCommandOptions): string[] {
   return [remotePrepCommand, uploadCommand, remoteRunCommand];
 }
 
+export function createSyncCommands(options: SyncCommandOptions): string[] {
+  const projectName =
+    options.projectName ?? inferProjectName(options.localPath);
+  const remoteRoot = normalizeRemoteRoot(options.remoteRoot);
+  const remoteProjectPath = `${remoteRoot}/${projectName}`;
+  const remoteTarget = `${options.user}@${options.machine}`;
+  const sharedSshOptions =
+    "-o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C";
+  const sshPrefix = `ssh ${sharedSshOptions} -J ${options.user}@${options.gateway} ${remoteTarget}`;
+  const rsyncSshCommand = `ssh ${sharedSshOptions} -J ${options.user}@${options.gateway}`;
+  const sourcePath = options.localPath.endsWith("/")
+    ? options.localPath
+    : `${options.localPath}/`;
+  const deleteFlag = options.keepRemote ? "" : " --delete";
+
+  const remotePrepCommand = `${sshPrefix} "mkdir -p ${remoteProjectPath}"`;
+  const rsyncCommand = `rsync -az${deleteFlag} -e ${quoteSingle(rsyncSshCommand)} ${quoteSingle(sourcePath)} ${quoteSingle(`${remoteTarget}:${remoteProjectPath}/`)}`;
+
+  return [remotePrepCommand, rsyncCommand];
+}
+
 export function createBuildCommandsWithMachineSelection(
   options: BuildMachineSelectionCommandOptions,
 ): string {
@@ -148,4 +183,18 @@ export function createRunCommandsWithMachineSelection(
   }).join(" && ");
 
   return `${options.selectorCommand}; ${machineSelectionPrompt}; ${chainedRunSteps}`;
+}
+
+export function createSyncCommandsWithMachineSelection(
+  options: SyncMachineSelectionCommandOptions,
+): string {
+  const machineSelectionPrompt =
+    "printf 'Select machine (e.g. cgpool1907): '; read machine; [ -n \"$machine\" ] || { echo 'No machine selected.' >&2; exit 1; }";
+
+  const chainedSyncSteps = createSyncCommands({
+    ...options,
+    machine: "$machine",
+  }).join(" && ");
+
+  return `${options.selectorCommand}; ${machineSelectionPrompt}; ${chainedSyncSteps}`;
 }

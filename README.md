@@ -11,6 +11,8 @@ Interactive CLI for WSI/CG remote workflows with a single entry point:
 - VNC tunnel setup
 - remote command execution
 - upload + run local project/script remotely
+- incremental project sync to remote machine
+- CUDA/GPU environment info command
 - remote build/upload/download workflow
 
 ## Quick start
@@ -54,6 +56,7 @@ Supported env vars:
 - `TUE_DRY_RUN`
 - `TUE_REMOTE_ROOT`
 - `TUE_BUILD_CMD`
+- `TUE_BUILD_PRESET` (`debug` | `release` | `relwithdebinfo`)
 - `TUE_ARTIFACT_PATH`
 - `TUE_BUILD_OUTPUT`
 - `TUE_PROJECT_NAME`
@@ -86,6 +89,11 @@ Machine listing behavior:
 - In interactive terminals it opens a scrollable arrow-key list.
 - Use `tue machines list --live` for raw live `pool-smi` stream.
 
+Sync/logging notes:
+
+- `tue sync` uses `rsync` locally (required).
+- `--log-file <path>` appends terminal output to a local logfile for `build`, `run`, `sync`, `cuda info`, and `remote run`.
+
 ## Commands (still supported)
 
 ```bash
@@ -98,8 +106,11 @@ tue user add --name boehlerse
 tue connect shell --machine cgpool1907
 tue connect tunnel --machine cgpool1907 --display 2 --local-port 5902
 tue connect vnc --machine cgpool1907 --display 2 --local-port 5902
+tue sync . --machine cgpool1907
+tue cuda info --machine cgpool1907
 tue run . --machine cgpool1907 --cmd "python3 train.py"
 tue run . --machine cgpool1907 --cmd "nvcc -O3 kernel.cu -o kernel && ./kernel"
+tue run . --machine cgpool1907 --cmd "./build/deviceQuery" --log-file ./logs/deviceQuery.log
 
 tue machines list
 tue machines list --live
@@ -112,12 +123,37 @@ tue vnc kill --machine cgpool1907 --display 2 --keep-tunnel
 tue tunnel open --machine cgpool1907 --display 2 --local-port 5902
 tue tunnel close --machine cgpool1907 --display 2
 tue tunnel close --local-port 5902
-tue build . --machine cgpool1907
+tue build . --machine cgpool1907 --preset release
+tue build . --machine cgpool1907 --preset debug --log-file ./logs/build-debug.log
 ```
+
+Build presets:
+
+- `--preset release` -> `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j`
+- `--preset debug` -> `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j`
+- `--preset relwithdebinfo` -> `cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j`
+- `--build-cmd` overrides presets.
 
 ## Development checks
 
 ```bash
+bun run lint
 bun test
 bun run check
+```
+
+## Git hooks
+
+Pre-commit hook is configured via Husky and runs:
+
+```bash
+bun run lint
+bun run check
+bun test
+```
+
+If hooks are not installed yet, run:
+
+```bash
+bun install
 ```

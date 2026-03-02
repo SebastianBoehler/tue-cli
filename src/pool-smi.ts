@@ -10,7 +10,9 @@ export type PoolMachineStatus = {
 
 function stripAnsi(value: string): string {
   return value
+    // eslint-disable-next-line no-control-regex
     .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/\u001b\][^\u0007]*(?:\u0007|\u001b\\)/g, "");
 }
 

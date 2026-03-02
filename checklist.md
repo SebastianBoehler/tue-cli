@@ -62,6 +62,40 @@ Use this file to manually verify behavior and tick items when done.
     - Executes build command remotely.
     - Downloads artifacts locally.
 
+- [ ] **Run code/script on VM works**
+  - Command: `tue run . --machine cgpool1905 --cmd "python3 train.py"`
+  - Expected:
+    - Uploads local project/script directory.
+    - Executes the run command on the remote machine in uploaded project directory.
+    - Shows command output in local terminal.
+    - Does not require artifact download step.
+
+- [ ] **Sync project to VM works**
+  - Command: `tue sync . --machine cgpool1905`
+  - Expected:
+    - Creates remote project directory if missing.
+    - Performs incremental file sync (rsync-based).
+    - Keeps remote mirror in sync with local directory.
+
+- [ ] **CUDA info command works**
+  - Command: `tue cuda info --machine cgpool1905`
+  - Expected:
+    - Shows host name.
+    - Shows `nvidia-smi` GPU summary (or clear fallback message).
+    - Shows `nvcc --version` (or clear fallback message).
+
+- [ ] **Build preset selection works**
+  - Command: `tue build . --machine cgpool1905 --preset debug`
+  - Expected:
+    - Uses preset-defined CMake build command.
+    - Produces artifacts as in normal build flow.
+
+- [ ] **Command logging works**
+  - Command: `tue run . --machine cgpool1905 --cmd "./build/deviceQuery" --log-file ./logs/deviceQuery.log`
+  - Expected:
+    - Command output is still shown in terminal.
+    - Output is appended to provided log file with timestamped command header.
+
 ## Build UX / Behavior Improvements (Target)
 
 These items describe desired behavior to implement or validate later.
