@@ -25,11 +25,8 @@ import { closeLocalSshTunnels } from "./tunnels";
 import type { FlagMap } from "./types";
 import {
   maybeRememberUser,
-  normalizeUsername,
   resolveUserFlag,
-  selectOrAddUserProfile,
 } from "./user";
-import { loadUserProfiles, rememberUserProfile } from "../user-profiles";
 import { rememberMachine } from "../machine-history";
 import { handleBuildCommand, handleRunCommand, handleSyncCommand } from "./command-handlers";
 import { resolveCudaDevices } from "./settings";
@@ -40,52 +37,10 @@ import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
 import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { runConnectMode } from "./connect";
 import { applyPositionalDisplayFlags } from "./positionals";
-
-async function handleUserCommand(subcommand: string | undefined, flags: FlagMap): Promise<void> {
-  if (subcommand === "list" || !subcommand) {
-    const profiles = loadUserProfiles();
-
-    if (profiles.users.length === 0) {
-      console.log("No saved usernames yet.");
-      return;
-    }
-
-    console.log("Saved usernames:");
-    for (const user of profiles.users) {
-      const marker = profiles.defaultUser === user ? " (default)" : "";
-      console.log(`  - ${user}${marker}`);
-    }
-    return;
-  }
-
-  if (subcommand === "select") {
-    const selectedUser = await selectOrAddUserProfile();
-    console.log(`Active username profile set to: ${selectedUser}`);
-    return;
-  }
-
-  if (subcommand === "add") {
-    const fromFlag = flags.name;
-
-    if (fromFlag) {
-      const normalized = normalizeUsername(fromFlag);
-      rememberUserProfile(normalized);
-      console.log(`Saved username profile: ${normalized}`);
-      return;
-    }
-
-    if (!supportsInteractivePrompts()) {
-      throw new Error("Missing username. Use: tue user add --name <username>");
-    }
-
-    const selectedUser = await selectOrAddUserProfile();
-    console.log(`Saved username profile: ${selectedUser}`);
-    return;
-  }
-
-  throw new Error("Unknown user subcommand. Use: user list | user select | user add");
-}
-
+import { handleUserCommand } from "./user-command";
+import { runJobCancel, runJobLogs, runJobStatus, runJobSubmit } from "./jobs";
+import { runDetachedRunLogs } from "./runs";
+import { runStorageCheck } from "./storage";
 async function handleCommand(command: string, subcommand: string | undefined, flags: FlagMap): Promise<void> {
   if (!flags.user) {
     flags.user = await resolveUserFlag(flags, Bun.env);
@@ -120,6 +75,11 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
     }
 
     case "run": {
+      if (subcommand === "logs") {
+        runDetachedRunLogs(config, flags, { logFile });
+        return;
+      }
+
       await handleRunCommand(config, flags, subcommand ?? ".", { logFile });
       return;
     }
@@ -148,6 +108,46 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
         throw new Error("Unknown machines subcommand. Use: machines list");
       }
       await runMachineList(config, { live: parseTruthy(flags.live) });
+      return;
+    }
+
+    case "storage": {
+      if (subcommand && subcommand !== "check") {
+        throw new Error("Unknown storage subcommand. Use: storage check");
+      }
+
+      await runStorageCheck(config, { logFile });
+      return;
+    }
+
+    case "job": {
+      const jobAction = subcommand ?? "status";
+
+      if (
+        jobAction !== "submit" &&
+        jobAction !== "status" &&
+        jobAction !== "cancel" &&
+        jobAction !== "logs"
+      ) {
+        throw new Error("Unknown job subcommand. Use: job submit | job status | job cancel | job logs");
+      }
+
+      if (jobAction === "submit") {
+        await runJobSubmit(config, flags, { logFile });
+        return;
+      }
+
+      if (jobAction === "status") {
+        await runJobStatus(config, flags, { logFile });
+        return;
+      }
+
+      if (jobAction === "cancel") {
+        await runJobCancel(config, flags, { logFile });
+        return;
+      }
+
+      await runJobLogs(config, flags, { logFile });
       return;
     }
 

@@ -44,6 +44,10 @@ type RunMachineSelectionCommandOptions = Omit<RunCommandOptions, "machine"> & {
   selectorCommand: string;
 };
 
+type DetachedRunCommandOptions = RunCommandOptions & {
+  runId: string;
+};
+
 type SyncMachineSelectionCommandOptions = Omit<SyncCommandOptions, "machine"> & {
   selectorCommand: string;
 };
@@ -85,6 +89,12 @@ function inferProjectName(localPath: string): string {
   return last || "project";
 }
 
+function resolveRunCommandWithCuda(options: RunCommandOptions): string {
+  return options.cudaDevices
+    ? `CUDA_VISIBLE_DEVICES=${options.cudaDevices} ${options.runCommand}`
+    : options.runCommand;
+}
+
 export function createBuildCommands(options: BuildCommandOptions): string[] {
   const projectName =
     options.projectName ?? inferProjectName(options.localPath);
@@ -120,9 +130,7 @@ export function createRunCommands(options: RunCommandOptions): string[] {
     options.projectName ?? inferProjectName(options.localPath);
   const remoteRoot = normalizeRemoteRoot(options.remoteRoot);
   const remoteProjectPath = `${remoteRoot}/${projectName}`;
-  const runCommandWithCuda = options.cudaDevices
-    ? `CUDA_VISIBLE_DEVICES=${options.cudaDevices} ${options.runCommand}`
-    : options.runCommand;
+  const runCommandWithCuda = resolveRunCommandWithCuda(options);
   const remoteRunScript = `cd ${remoteProjectPath} && ${runCommandWithCuda}`;
   const remoteTarget = `${options.user}@${options.machine}`;
   const sharedSshOptions =
@@ -138,6 +146,23 @@ export function createRunCommands(options: RunCommandOptions): string[] {
   const remoteRunCommand = `${sshPrefix} "bash -lc ${quoteSingle(remoteRunScript)}"`;
 
   return [remotePrepCommand, uploadCommand, remoteRunCommand];
+}
+
+export function createDetachedRunCommand(
+  options: DetachedRunCommandOptions,
+): string {
+  const projectName =
+    options.projectName ?? inferProjectName(options.localPath);
+  const remoteRoot = normalizeRemoteRoot(options.remoteRoot);
+  const remoteProjectPath = `${remoteRoot}/${projectName}`;
+  const remoteTarget = `${options.user}@${options.machine}`;
+  const sharedSshOptions =
+    "-o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C";
+  const sshPrefix = `ssh ${sharedSshOptions} -J ${options.user}@${options.gateway} ${remoteTarget}`;
+  const runCommandWithCuda = resolveRunCommandWithCuda(options);
+
+  const detachedScript = `cd ${remoteProjectPath} && mkdir -p .tue-runs && log_file=".tue-runs/${options.runId}.log" && nohup ${runCommandWithCuda} > "$log_file" 2>&1 < /dev/null & run_pid=$! && echo "TUE_RUN_ID=${options.runId}" && echo "TUE_RUN_PID=$run_pid" && echo "TUE_RUN_LOG=$log_file" && echo "TUE_RUN_PROJECT=${remoteProjectPath}"`;
+  return `${sshPrefix} "bash -lc ${quoteSingle(detachedScript)}"`;
 }
 
 export function createSyncCommands(options: SyncCommandOptions): string[] {

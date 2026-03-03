@@ -10,11 +10,13 @@ import type { ResolvedConfig } from "../config";
 import { warnOnRestrictedMachine } from "../machines";
 import { supportsInteractivePrompts } from "../ui";
 import { executeAll } from "./execution";
-import { ensureMachine } from "./helpers";
+import { ensureMachine, parseTruthy } from "./helpers";
 import { buildPoolSmiSelectorCommandWithFallback } from "./pool";
 import { resolveBuildSettings, resolveRunSettings, resolveSyncSettings } from "./settings";
+import { runSyncWatchLoop } from "./sync-watch";
 import { selectMachine } from "./user";
 import type { CommandRuntimeOptions, FlagMap } from "./types";
+import { startDetachedRun } from "./detached-run";
 
 export async function handleBuildCommand(
   config: ResolvedConfig,
@@ -84,6 +86,7 @@ export async function handleRunCommand(
   localPath: string,
   options?: CommandRuntimeOptions,
 ): Promise<void> {
+  const detached = parseTruthy(flags.detach);
   const runSettings = resolveRunSettings(flags, localPath, Bun.env);
   const machine = config.machine ? ensureMachine(config.machine) : undefined;
   let selectedMachine = machine;
@@ -103,7 +106,7 @@ export async function handleRunCommand(
     });
   } else if (supportsInteractivePrompts()) {
     selectedMachine = await selectMachine();
-    commands = createRunCommands({
+    const runOptions = {
       user: config.user,
       gateway: config.gateway,
       machine: selectedMachine,
@@ -113,8 +116,16 @@ export async function handleRunCommand(
       runCommand: runSettings.runCommand,
       cudaDevices: runSettings.cudaDevices,
       keepRemote: runSettings.keepRemote,
-    });
+    };
+
+    commands = createRunCommands(runOptions);
   } else {
+    if (detached) {
+      throw new Error(
+        "Detached runs require --machine when interactive prompts are unavailable.",
+      );
+    }
+
     commands = [
       createRunCommandsWithMachineSelection({
         user: config.user,
@@ -134,6 +145,22 @@ export async function handleRunCommand(
     warnOnRestrictedMachine(selectedMachine);
   }
 
+  if (detached) {
+    if (!selectedMachine) {
+      throw new Error("Could not resolve target machine for detached run.");
+    }
+
+    startDetachedRun(
+      config,
+      localPath,
+      selectedMachine,
+      runSettings,
+      commands.slice(0, 2),
+      options,
+    );
+    return;
+  }
+
   executeAll(commands, config.dryRun, options);
 }
 
@@ -143,6 +170,7 @@ export async function handleSyncCommand(
   localPath: string,
   options?: CommandRuntimeOptions,
 ): Promise<void> {
+  const watchSync = parseTruthy(flags.watch);
   const syncSettings = resolveSyncSettings(flags, localPath, Bun.env);
   const machine = config.machine ? ensureMachine(config.machine) : undefined;
   let selectedMachine = machine;
@@ -170,6 +198,12 @@ export async function handleSyncCommand(
       keepRemote: syncSettings.keepRemote,
     });
   } else {
+    if (watchSync) {
+      throw new Error(
+        "Sync watch mode requires --machine when interactive prompts are unavailable.",
+      );
+    }
+
     commands = [
       createSyncCommandsWithMachineSelection({
         user: config.user,
@@ -185,6 +219,16 @@ export async function handleSyncCommand(
 
   if (selectedMachine) {
     warnOnRestrictedMachine(selectedMachine);
+  }
+
+  if (watchSync) {
+    await runSyncWatchLoop({
+      localPath,
+      commands,
+      dryRun: config.dryRun,
+      runtimeOptions: options,
+    });
+    return;
   }
 
   executeAll(commands, config.dryRun, options);

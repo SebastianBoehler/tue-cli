@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   createBuildCommands,
   createBuildCommandsWithMachineSelection,
+  createDetachedRunCommand,
   createRunCommands,
   createRunCommandsWithMachineSelection,
   createSyncCommands,
@@ -128,6 +129,28 @@ describe("createRunCommands", () => {
     expect(commands[2]).toBe(
       `ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@cgpool1907 "bash -lc 'cd ~/exercise00/cuda-job && CUDA_VISIBLE_DEVICES=0,1 python3 train.py'"`,
     );
+  });
+
+  test("creates detached run command with metadata output", () => {
+    const command = createDetachedRunCommand({
+      user: "test-user",
+      gateway: "gateway.example.org",
+      machine: "cgpool1907",
+      localPath: "./cuda-job",
+      projectName: "cuda-job",
+      remoteRoot: "~/exercise00",
+      runCommand: "python3 train.py",
+      cudaDevices: "1",
+      runId: "run-123",
+    });
+
+    expect(command.includes("ssh -o ControlMaster=auto")).toBe(true);
+    expect(command.includes("cd ~/exercise00/cuda-job")).toBe(true);
+    expect(command.includes("mkdir -p .tue-runs")).toBe(true);
+    expect(command.includes("nohup CUDA_VISIBLE_DEVICES=1 python3 train.py")).toBe(true);
+    expect(command.includes("TUE_RUN_ID=run-123")).toBe(true);
+    expect(command.includes('echo "TUE_RUN_PID=$run_pid"')).toBe(true);
+    expect(command.includes('echo "TUE_RUN_LOG=$log_file"')).toBe(true);
   });
 });
 

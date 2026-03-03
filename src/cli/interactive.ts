@@ -15,6 +15,8 @@ import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
 import { resolveCudaDevices } from "./settings";
 import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { closeLocalSshTunnels } from "./tunnels";
+import { runDetachedRunLogs } from "./runs";
+import { runStorageCheck } from "./storage";
 import {
   buildProxyJumpPoolCommand,
   buildVncListRemoteCommand,
@@ -48,9 +50,11 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
       { value: "remote-run", label: "Run remote command" },
       { value: "build", label: "Build local project remotely" },
       { value: "run-local", label: "Run local project/script remotely" },
+      { value: "run-logs", label: "Show logs from detached run" },
       { value: "sync", label: "Sync local project to remote machine" },
       { value: "cuda-info", label: "Show CUDA/GPU info on machine" },
       { value: "cuda-select", label: "List GPUs and select CUDA device(s)" },
+      { value: "storage-check", label: "Check remote storage/quota usage" },
       { value: "trash-empty", label: "Empty remote trash (~/.local/share/Trash)" },
       { value: "machines", label: "List known machines + pool-smi status" },
       { value: "exit", label: "Exit" },
@@ -192,6 +196,11 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
     return;
   }
 
+  if (action === "run-logs") {
+    runDetachedRunLogs(config, flags, { logFile });
+    return;
+  }
+
   if (action === "cuda-info") {
     await runCudaInfo(config, { logFile }, await selectMachine(config.machine));
     return;
@@ -221,5 +230,9 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
     } else {
       console.log("Cancelled remote trash cleanup.");
     }
+  }
+
+  if (action === "storage-check") {
+    await runStorageCheck(config, { logFile }, await selectMachine(config.machine));
   }
 }

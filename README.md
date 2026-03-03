@@ -1,4 +1,5 @@
 # tue-cli
+
 [![Build](https://github.com/sebastianboehler/tue-cli/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/sebastianboehler/tue-cli/actions/workflows/build.yml)
 [![Test](https://github.com/sebastianboehler/tue-cli/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/sebastianboehler/tue-cli/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -13,11 +14,27 @@ Interactive CLI for WSI/CG remote workflows with a single entry point:
 - upload + run local project/script remotely
 - incremental project sync to remote machine
 - CUDA/GPU environment info command
+- detached run mode with persisted run IDs/log lookup
+- Slurm job submit/status/cancel/log tail helpers
+- storage/quota check command
 - remote build/upload/download workflow
 
 ## Quick start
 
+### Install from npm (recommended)
+
 ```bash
+npm install -g tue-cli
+# or
+bun install -g tue-cli
+tue
+```
+
+### Install from source
+
+```bash
+git clone https://github.com/sebastianboehler/tue-cli.git
+cd tue-cli
 bun install
 bun run link:global
 tue
@@ -69,7 +86,7 @@ profile from `~/.config/tue-cli/profiles.json` (or `$XDG_CONFIG_HOME/tue-cli/pro
 Machine selections are also remembered globally and shown in a `Recently used machines`
 option at the top of interactive machine selection.
 
-## CG connectivity model (aligned with your document)
+## CG connectivity model
 
 - Gateway from outside WSI network: `sshgw.cs.uni-tuebingen.de`
 - Gateway from university/VPN network: `cgcontact.cs.uni-tuebingen.de`
@@ -97,8 +114,10 @@ Machine listing behavior:
 Sync/logging notes:
 
 - `tue sync` uses `rsync` locally (required).
+- `tue sync --watch` keeps watching your local folder and automatically re-syncs on save/change (stop with `Ctrl+C`).
 - `--log-file <path>` appends terminal output to a local logfile for `build`, `run`, `sync`, `cuda info`, and `remote run`.
 - use `--cuda-devices <list>` (or `TUE_CUDA_VISIBLE_DEVICES`) to scope CUDA programs to selected GPUs.
+- `tue run --detach` stores run metadata globally in `~/.config/tue-cli/runs.json` (or `$XDG_CONFIG_HOME/tue-cli/runs.json`).
 - remote paths for uploaded projects (`--remote-root` / `TUE_REMOTE_ROOT`) are restricted to:
   - `~/...`
   - `/home/...`
@@ -122,12 +141,20 @@ tue connect tunnel --machine cgpool1907 --display 2 --local-port 5902
 tue connect vnc --machine cgpool1907 --display 2 --local-port 5902
 tue connect vnc --machine cgpool1907 --display 2 --vnc-vm plasma
 tue sync . --machine cgpool1907
+tue sync . --machine cgpool1907 --watch
 tue cuda info --machine cgpool1907
 tue cuda select --machine cgpool1907
 tue run . --machine cgpool1907 --cmd "python3 train.py"
 tue run . --machine cgpool1907 --cmd "python3 train.py" --cuda-devices 0
+tue run . --machine cgpool1907 --cmd "python3 train.py --epochs 100" --detach
+tue run logs --run-id <id> --follow
 tue run . --machine cgpool1907 --cmd "nvcc -O3 kernel.cu -o kernel && ./kernel"
 tue run . --machine cgpool1907 --cmd "./build/deviceQuery" --log-file ./logs/deviceQuery.log
+tue storage check --machine cgpool1907
+tue job submit --machine cgpool1907 --cmd "python3 train.py" --name train01 --gpus 1 --cpus 8 --mem 32G --time 08:00:00
+tue job status --machine cgpool1907
+tue job logs --machine cgpool1907 --job-id 123456 --follow
+tue job cancel --machine cgpool1907 --job-id 123456
 
 tue machines list
 tue machines list --live

@@ -1,11 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildDetachedRunLogsRemoteCommand,
   buildGatewaySshCommand,
   buildInteractiveShellCommand,
   buildMachineSelectAndShellCommand,
   buildMachineSelectAndTunnelCommand,
   buildMachineSelectAndVncConnectCommand,
   buildEmptyTrashRemoteCommand,
+  buildSlurmCancelRemoteCommand,
+  buildSlurmLogsRemoteCommand,
+  buildSlurmStatusRemoteCommand,
+  buildSlurmSubmitRemoteCommand,
+  buildStorageCheckRemoteCommand,
   buildVncConnectRemoteCommand,
   buildVncKillRemoteCommand,
   buildVncListRemoteCommand,
@@ -221,6 +227,72 @@ describe("ssh command building", () => {
     expect(cmd.includes('$HOME/.local/share/Trash/info')).toBe(true);
     expect(cmd.includes("find \"$trash_files\" -mindepth 1 -maxdepth 1 -exec rm -rf {} +")).toBe(true);
     expect(cmd.includes("find \"$trash_info\" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -delete")).toBe(true);
+  });
+
+  test("builds storage check command", () => {
+    const cmd = buildStorageCheckRemoteCommand();
+
+    expect(cmd.includes("Disk usage")).toBe(true);
+    expect(cmd.includes("/graphics/scratch2/students")).toBe(true);
+    expect(cmd.includes("quota -s")).toBe(true);
+    expect(cmd.includes("Largest entries in $HOME")).toBe(true);
+  });
+
+  test("builds slurm submit command", () => {
+    const cmd = buildSlurmSubmitRemoteCommand({
+      command: "python3 train.py",
+      jobName: "train01",
+      partition: "gpu",
+      timeLimit: "08:00:00",
+      gpus: 1,
+      cpus: 8,
+      memory: "32G",
+      workdir: "/home/test-user/project",
+      cudaDevices: "0",
+    });
+
+    expect(cmd.includes("command -v sbatch")).toBe(true);
+    expect(cmd.includes("--job-name")).toBe(true);
+    expect(cmd.includes("--partition")).toBe(true);
+    expect(cmd.includes("--time")).toBe(true);
+    expect(cmd.includes("--gpus")).toBe(true);
+    expect(cmd.includes("--cpus-per-task")).toBe(true);
+    expect(cmd.includes("--mem")).toBe(true);
+    expect(cmd.includes("CUDA_VISIBLE_DEVICES=$cuda_devices")).toBe(true);
+    expect(cmd.includes("cd $workdir && $wrap_cmd")).toBe(true);
+  });
+
+  test("builds slurm status/cancel/log commands", () => {
+    const statusCmd = buildSlurmStatusRemoteCommand({ jobId: "1234" });
+    const cancelCmd = buildSlurmCancelRemoteCommand({ jobId: "1234" });
+    const logsCmd = buildSlurmLogsRemoteCommand({
+      jobId: "1234",
+      lines: 150,
+      follow: true,
+    });
+
+    expect(statusCmd.includes("command -v squeue")).toBe(true);
+    expect(statusCmd.includes("squeue -j")).toBe(true);
+    expect(cancelCmd.includes("command -v scancel")).toBe(true);
+    expect(cancelCmd.includes("scancel")).toBe(true);
+    expect(logsCmd.includes("scontrol show job")).toBe(true);
+    expect(logsCmd.includes("tail -n")).toBe(true);
+    expect(logsCmd.includes("tail -n \"$lines\" -f")).toBe(true);
+  });
+
+  test("builds detached run logs command", () => {
+    const cmd = buildDetachedRunLogsRemoteCommand({
+      projectPath: "/home/test-user/project",
+      logPath: ".tue-runs/abc.log",
+      lines: 120,
+      follow: false,
+    });
+
+    expect(cmd.includes("project_path='/home/test-user/project'")).toBe(true);
+    expect(cmd.includes("log_path='.tue-runs/abc.log'")).toBe(true);
+    expect(cmd.includes('resolved_log="$project_path/$log_path"')).toBe(true);
+    expect(cmd.includes("Could not find detached run log")).toBe(true);
+    expect(cmd.includes('tail -n "$lines" "$resolved_log"')).toBe(true);
   });
 
   test("builds tunnel command with separate local and remote ports", () => {

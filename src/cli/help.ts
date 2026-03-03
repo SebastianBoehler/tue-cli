@@ -4,10 +4,16 @@ export function printHelp(): void {
 Usage:
   tue
   tue build [<local_path>] [--machine <hostname>] [--project-name <name>] [--build-cmd "<cmd>"] [--preset <debug|release|relwithdebinfo>] [--artifact-path <path>] [--output-dir <dir>] [--log-file <path>] [--dry-run]
-  tue run [<local_path>] --cmd "<command>" [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--cuda-devices <list>] [--keep-remote] [--log-file <path>] [--dry-run]
-  tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--keep-remote] [--log-file <path>] [--dry-run]
+  tue run [<local_path>] --cmd "<command>" [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--cuda-devices <list>] [--detach] [--keep-remote] [--log-file <path>] [--dry-run]
+  tue run logs [--run-id <id>] [--machine <hostname>] [--lines <n>] [--follow] [--log-file <path>] [--dry-run]
+  tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--watch] [--keep-remote] [--log-file <path>] [--dry-run]
   tue cuda <info|select> [--machine <hostname>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
   tue connect [shell|tunnel|vnc] [--machine <hostname>] [--display <n>] [--vnc-vm <name>] [--local-port <port>] [--user <name>] [--dry-run]
+  tue storage check [--machine <hostname>] [--log-file <path>] [--dry-run]
+  tue job submit --cmd "<command>" [--machine <hostname>] [--name <job-name>] [--partition <name>] [--time <HH:MM:SS>] [--gpus <n>] [--cpus <n>] [--mem <size>] [--workdir <path>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
+  tue job status [--machine <hostname>] [--job-id <id>] [--log-file <path>] [--dry-run]
+  tue job cancel [--machine <hostname>] --job-id <id> [--log-file <path>] [--dry-run]
+  tue job logs [--machine <hostname>] --job-id <id> [--lines <n>] [--follow] [--log-file <path>] [--dry-run]
   tue user <list|select|add> [--name <username>]
   tue machines list [--user <name>] [--gateway <host>] [--live] [--dry-run]
   tue vnc <start|list|kill> [<display>|:<display>] --machine <hostname> [--display <n>] [--vnc-vm <name>] [--keep-tunnel] [--user <name>] [--dry-run]

@@ -7,12 +7,13 @@ import type { ResolvedConfig } from "../config";
 import { warnOnRestrictedMachine } from "../machines";
 import { buildEmptyTrashRemoteCommand, buildPoolCommand } from "../ssh";
 import { execute, executeAll } from "./execution";
-import { ensureMachine, hasLocalBinary } from "./helpers";
+import { ensureMachine, hasLocalBinary, parseTruthy } from "./helpers";
 import {
   resolveBuildSettings,
   resolveRunSettings,
   resolveSyncSettings,
 } from "./settings";
+import { runSyncWatchLoop } from "./sync-watch";
 import { selectMachine } from "./user";
 import type { CommandRuntimeOptions, FlagMap } from "./types";
 
@@ -107,6 +108,16 @@ export async function runSync(
     remoteRoot: syncSettings.remoteRoot,
     keepRemote: syncSettings.keepRemote,
   });
+
+  if (parseTruthy(flags.watch)) {
+    await runSyncWatchLoop({
+      localPath,
+      commands,
+      dryRun: config.dryRun,
+      runtimeOptions: options,
+    });
+    return;
+  }
 
   executeAll(commands, config.dryRun, options);
 }

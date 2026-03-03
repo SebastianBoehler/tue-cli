@@ -28,6 +28,39 @@ type MachineSelectOptions = {
   gateway: string;
 };
 
+type SlurmSubmitCommandOptions = {
+  command: string;
+  jobName?: string;
+  partition?: string;
+  timeLimit?: string;
+  gpus?: number;
+  cpus?: number;
+  memory?: string;
+  workdir?: string;
+  cudaDevices?: string;
+};
+
+type SlurmStatusCommandOptions = {
+  jobId?: string;
+};
+
+type SlurmCancelCommandOptions = {
+  jobId: string;
+};
+
+type SlurmLogsCommandOptions = {
+  jobId: string;
+  lines: number;
+  follow: boolean;
+};
+
+type DetachedRunLogsCommandOptions = {
+  projectPath: string;
+  logPath: string;
+  lines: number;
+  follow: boolean;
+};
+
 const VNC_SERVER_FALLBACK_PATHS = [
   "/opt/TurboVNC/bin/vncserver",
   "/opt/tigervnc/bin/vncserver",
@@ -53,6 +86,64 @@ export function buildPoolSmiSnapshotRemoteCommand(): string {
 
 export function buildEmptyTrashRemoteCommand(): string {
   return "trash_files=\"$HOME/.local/share/Trash/files\"; trash_info=\"$HOME/.local/share/Trash/info\"; removed_files=0; removed_info=0; if [ -d \"$trash_files\" ]; then removed_files=$(find \"$trash_files\" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' '); find \"$trash_files\" -mindepth 1 -maxdepth 1 -exec rm -rf {} +; fi; if [ -d \"$trash_info\" ]; then removed_info=$(find \"$trash_info\" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' | wc -l | tr -d ' '); find \"$trash_info\" -mindepth 1 -maxdepth 1 -type f -name '*.trashinfo' -delete; fi; echo \"Trash emptied: removed ${removed_files} item(s) and ${removed_info} metadata file(s) in $HOME/.local/share/Trash.\"";
+}
+
+export function buildStorageCheckRemoteCommand(): string {
+  return "echo '== Host ==' && hostname && echo && echo '== Disk usage (selected paths) ==' && for p in \"$HOME\" /home /graphics/scratch2/students /graphics/scratch3/staff /ceph /var/tmp; do if [ -e \"$p\" ]; then df -h \"$p\" 2>/dev/null | tail -n +2 | awk -v path=\"$p\" '{print path\" -> \"$0}'; fi; done && echo && echo '== Quota ==' && (command -v quota >/dev/null 2>&1 && quota -s || echo 'quota command not available') && echo && echo '== Largest entries in $HOME (top 12) ==' && (du -sh \"$HOME\"/* 2>/dev/null | sort -h | tail -n 12 || true)";
+}
+
+export function buildSlurmSubmitRemoteCommand(
+  options: SlurmSubmitCommandOptions,
+): string {
+  const jobName = quoteForShellSingle(options.jobName ?? "");
+  const partition = quoteForShellSingle(options.partition ?? "");
+  const timeLimit = quoteForShellSingle(options.timeLimit ?? "");
+  const gpus = quoteForShellSingle(
+    options.gpus !== undefined ? String(options.gpus) : "",
+  );
+  const cpus = quoteForShellSingle(
+    options.cpus !== undefined ? String(options.cpus) : "",
+  );
+  const memory = quoteForShellSingle(options.memory ?? "");
+  const workdir = quoteForShellSingle(options.workdir ?? "");
+  const cudaDevices = quoteForShellSingle(options.cudaDevices ?? "");
+  const command = quoteForShellSingle(options.command);
+
+  return `if ! command -v sbatch >/dev/null 2>&1; then echo 'sbatch not found on remote machine.' >&2; exit 127; fi; job_name=${jobName}; partition=${partition}; time_limit=${timeLimit}; gpus=${gpus}; cpus=${cpus}; mem=${memory}; workdir=${workdir}; cuda_devices=${cudaDevices}; run_cmd=${command}; wrap_cmd="$run_cmd"; [ -n "$cuda_devices" ] && wrap_cmd="CUDA_VISIBLE_DEVICES=$cuda_devices $wrap_cmd"; [ -n "$workdir" ] && wrap_cmd="cd $workdir && $wrap_cmd"; set -- sbatch --parsable; [ -n "$job_name" ] && set -- "$@" --job-name "$job_name"; [ -n "$partition" ] && set -- "$@" --partition "$partition"; [ -n "$time_limit" ] && set -- "$@" --time "$time_limit"; [ -n "$gpus" ] && set -- "$@" --gpus "$gpus"; [ -n "$cpus" ] && set -- "$@" --cpus-per-task "$cpus"; [ -n "$mem" ] && set -- "$@" --mem "$mem"; "$@" --wrap "$wrap_cmd"`;
+}
+
+export function buildSlurmStatusRemoteCommand(
+  options: SlurmStatusCommandOptions,
+): string {
+  const jobId = quoteForShellSingle(options.jobId ?? "");
+  return `if ! command -v squeue >/dev/null 2>&1; then echo 'squeue not found on remote machine.' >&2; exit 127; fi; job_id=${jobId}; if [ -n "$job_id" ]; then squeue -j "$job_id" -o '%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R'; else squeue -u "$(id -un)" -o '%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R'; fi`;
+}
+
+export function buildSlurmCancelRemoteCommand(
+  options: SlurmCancelCommandOptions,
+): string {
+  const jobId = quoteForShellSingle(options.jobId);
+  return `if ! command -v scancel >/dev/null 2>&1; then echo 'scancel not found on remote machine.' >&2; exit 127; fi; job_id=${jobId}; scancel "$job_id" && echo "Cancelled job $job_id."`;
+}
+
+export function buildSlurmLogsRemoteCommand(
+  options: SlurmLogsCommandOptions,
+): string {
+  const jobId = quoteForShellSingle(options.jobId);
+  const lines = quoteForShellSingle(String(options.lines));
+  const follow = quoteForShellSingle(options.follow ? "1" : "0");
+  return `job_id=${jobId}; lines=${lines}; follow=${follow}; stdout_path=''; if command -v scontrol >/dev/null 2>&1; then stdout_path=$(scontrol show job "$job_id" 2>/dev/null | tr ' ' '\\n' | awk -F= '/^StdOut=/{print $2; exit}'); fi; [ -z "$stdout_path" ] && stdout_path="slurm-$job_id.out"; if [ ! -f "$stdout_path" ]; then echo "Could not find log file: $stdout_path" >&2; exit 1; fi; if [ "$follow" = "1" ]; then tail -n "$lines" -f "$stdout_path"; else tail -n "$lines" "$stdout_path"; fi`;
+}
+
+export function buildDetachedRunLogsRemoteCommand(
+  options: DetachedRunLogsCommandOptions,
+): string {
+  const projectPath = quoteForShellSingle(options.projectPath);
+  const logPath = quoteForShellSingle(options.logPath);
+  const lines = quoteForShellSingle(String(options.lines));
+  const follow = quoteForShellSingle(options.follow ? "1" : "0");
+
+  return `project_path=${projectPath}; log_path=${logPath}; lines=${lines}; follow=${follow}; case "$log_path" in /*) resolved_log="$log_path" ;; *) resolved_log="$project_path/$log_path" ;; esac; if [ ! -f "$resolved_log" ]; then echo "Could not find detached run log: $resolved_log" >&2; exit 1; fi; if [ "$follow" = "1" ]; then tail -n "$lines" -f "$resolved_log"; else tail -n "$lines" "$resolved_log"; fi`;
 }
 
 function buildVncResolverRemoteCommand(): string {

@@ -77,6 +77,13 @@ Use this file to manually verify behavior and tick items when done.
     - Performs incremental file sync (rsync-based).
     - Keeps remote mirror in sync with local directory.
 
+- [ ] **Sync watch mode works**
+  - Command: `tue sync . --machine cgpool1905 --watch`
+  - Expected:
+    - Performs an initial sync.
+    - Watches local file changes and auto-runs sync after save.
+    - Stops cleanly with `Ctrl+C`.
+
 - [ ] **CUDA info command works**
   - Command: `tue cuda info --machine cgpool1905`
   - Expected:
@@ -95,6 +102,32 @@ Use this file to manually verify behavior and tick items when done.
   - Expected:
     - Command output is still shown in terminal.
     - Output is appended to provided log file with timestamped command header.
+
+- [ ] **Detached run + log lookup works**
+  - Commands:
+    - `tue run . --machine cgpool1905 --cmd "python3 train.py" --detach`
+    - `tue run logs --run-id <id>`
+  - Expected:
+    - Detached run returns a `run-id` and remote PID.
+    - `tue run logs` shows the detached run log file.
+    - `tue run logs --follow` tails live output.
+
+- [ ] **Storage check works**
+  - Command: `tue storage check --machine cgpool1905`
+  - Expected:
+    - Shows host, disk usage, quota (if available), and largest home entries.
+
+- [ ] **Slurm job workflow works**
+  - Commands:
+    - `tue job submit --machine cgpool1905 --cmd "python3 train.py" --name test01 --gpus 1 --cpus 4 --mem 16G --time 02:00:00`
+    - `tue job status --machine cgpool1905`
+    - `tue job logs --machine cgpool1905 --job-id <id>`
+    - `tue job cancel --machine cgpool1905 --job-id <id>`
+  - Expected:
+    - Submit prints a job id.
+    - Status lists your jobs (or selected job).
+    - Logs command reads job output file.
+    - Cancel terminates selected job id.
 
 ## Build UX / Behavior Improvements (Target)
 
