@@ -43,6 +43,7 @@ export async function runBuild(
     artifactPath: buildSettings.artifactPath,
     outputDir: buildSettings.outputDir,
     keepRemote: buildSettings.keepRemote,
+    noDownload: buildSettings.noDownload,
   });
 
   executeAll(commands, config.dryRun, options);

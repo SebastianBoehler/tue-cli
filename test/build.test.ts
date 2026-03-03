@@ -56,6 +56,26 @@ describe("createBuildCommands", () => {
     );
   });
 
+  test("skips local download commands when noDownload is enabled", () => {
+    const commands = createBuildCommands({
+      user: "test-user",
+      gateway: "gateway.example.org",
+      machine: "cgpool1907",
+      localPath: "./deviceQuery",
+      projectName: "deviceQuery",
+      remoteRoot: "~/exercise00",
+      buildCommand: "make -j",
+      artifactPath: "build",
+      outputDir: "./out",
+      noDownload: true,
+    });
+
+    expect(commands.length).toBe(3);
+    expect(commands[2]).toBe(
+      `ssh -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=~/.ssh/tue-cli-%C -J test-user@gateway.example.org test-user@cgpool1907 "bash -lc 'cd ~/exercise00/deviceQuery && make -j'"`,
+    );
+  });
+
   test("creates interactive machine-selection build command", () => {
     const command = createBuildCommandsWithMachineSelection({
       user: "test-user",

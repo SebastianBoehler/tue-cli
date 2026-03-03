@@ -80,6 +80,7 @@ Supported env vars:
 - `TUE_BUILD_OUTPUT`
 - `TUE_PROJECT_NAME`
 - `TUE_KEEP_REMOTE`
+- `TUE_NO_DOWNLOAD`
 
 If `--user` and `TUE_USER` are both missing, `tue-cli` uses a global saved username
 profile from `~/.config/tue-cli/profiles.json` (or `$XDG_CONFIG_HOME/tue-cli/profiles.json`).
@@ -172,6 +173,7 @@ tue tunnel close --machine cgpool1907 --display 2
 tue tunnel close --local-port 5902
 tue build . --machine cgpool1907 --preset release
 tue build . --machine cgpool1907 --preset debug --log-file ./logs/build-debug.log
+tue build . --machine cgpool1907 --preset release --no-download
 ```
 
 Build presets:
@@ -180,6 +182,7 @@ Build presets:
 - `--preset debug` -> `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j`
 - `--preset relwithdebinfo` -> `cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j`
 - `--build-cmd` overrides presets.
+- `--no-download` skips local artifact download (build runs remotely only).
 
 ## Development checks
 

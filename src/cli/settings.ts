@@ -98,6 +98,7 @@ export function resolveBuildSettings(
   artifactPath: string;
   outputDir: string;
   keepRemote: boolean;
+  noDownload: boolean;
 } {
   const preset = parsedFlags.preset ?? env.TUE_BUILD_PRESET;
   const projectName =
@@ -117,6 +118,7 @@ export function resolveBuildSettings(
   const artifactPath = parsedFlags["artifact-path"] ?? env.TUE_ARTIFACT_PATH ?? "build";
   const outputDir = parsedFlags["output-dir"] ?? env.TUE_BUILD_OUTPUT ?? "./.tue-artifacts";
   const keepRemote = parseTruthy(parsedFlags["keep-remote"] ?? env.TUE_KEEP_REMOTE);
+  const noDownload = parseTruthy(parsedFlags["no-download"] ?? env.TUE_NO_DOWNLOAD);
 
   return {
     projectName,
@@ -125,6 +127,7 @@ export function resolveBuildSettings(
     artifactPath,
     outputDir,
     keepRemote,
+    noDownload,
   };
 }
 

@@ -73,6 +73,22 @@ describe("remote root policy", () => {
       ),
     ).toThrow(/Invalid remote root/);
   });
+
+  test("build settings support no-download from flags and env", () => {
+    const fromFlag = resolveBuildSettings(
+      { "no-download": "true" },
+      ".",
+      {},
+    );
+    const fromEnv = resolveBuildSettings(
+      {},
+      ".",
+      { TUE_NO_DOWNLOAD: "1" },
+    );
+
+    expect(fromFlag.noDownload).toBe(true);
+    expect(fromEnv.noDownload).toBe(true);
+  });
 });
 
 describe("cuda device parsing", () => {

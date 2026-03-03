@@ -3,7 +3,7 @@ export function printHelp(): void {
 
 Usage:
   tue
-  tue build [<local_path>] [--machine <hostname>] [--project-name <name>] [--build-cmd "<cmd>"] [--preset <debug|release|relwithdebinfo>] [--artifact-path <path>] [--output-dir <dir>] [--log-file <path>] [--dry-run]
+  tue build [<local_path>] [--machine <hostname>] [--project-name <name>] [--build-cmd "<cmd>"] [--preset <debug|release|relwithdebinfo>] [--artifact-path <path>] [--output-dir <dir>] [--no-download] [--log-file <path>] [--dry-run]
   tue run [<local_path>] --cmd "<command>" [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--cuda-devices <list>] [--detach] [--keep-remote] [--log-file <path>] [--dry-run]
   tue run logs [--run-id <id>] [--machine <hostname>] [--lines <n>] [--follow] [--log-file <path>] [--dry-run]
   tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--watch] [--keep-remote] [--log-file <path>] [--dry-run]
@@ -34,6 +34,6 @@ Config sources (priority):
 Supported environment variables:
   TUE_USER, TUE_GATEWAY, TUE_MACHINE, TUE_DISPLAY, TUE_VNC_VM, TUE_LOCAL_PORT, TUE_DRY_RUN,
   TUE_CUDA_VISIBLE_DEVICES,
-  TUE_REMOTE_ROOT, TUE_BUILD_CMD, TUE_BUILD_PRESET, TUE_ARTIFACT_PATH, TUE_BUILD_OUTPUT, TUE_PROJECT_NAME, TUE_KEEP_REMOTE
+  TUE_REMOTE_ROOT, TUE_BUILD_CMD, TUE_BUILD_PRESET, TUE_ARTIFACT_PATH, TUE_BUILD_OUTPUT, TUE_PROJECT_NAME, TUE_KEEP_REMOTE, TUE_NO_DOWNLOAD
 `);
 }

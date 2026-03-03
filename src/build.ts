@@ -9,6 +9,7 @@ type BuildCommandOptions = {
   artifactPath: string;
   outputDir: string;
   keepRemote?: boolean;
+  noDownload?: boolean;
 };
 
 type RunCommandOptions = {
@@ -113,16 +114,14 @@ export function createBuildCommands(options: BuildCommandOptions): string[] {
 
   const uploadCommand = `${scpPrefix} ${quoteSingle(options.localPath)} ${remoteTarget}:${remoteProjectPath}`;
   const remoteBuildCommand = `${sshPrefix} "bash -lc ${quoteSingle(remoteBuildScript)}"`;
+  if (options.noDownload) {
+    return [remotePrepCommand, uploadCommand, remoteBuildCommand];
+  }
+
   const localOutputCreateCommand = `mkdir -p ${quoteSingle(options.outputDir)}`;
   const downloadCommand = `${scpPrefix} ${remoteTarget}:${remoteProjectPath}/${options.artifactPath} ${quoteSingle(options.outputDir)}`;
 
-  return [
-    remotePrepCommand,
-    uploadCommand,
-    remoteBuildCommand,
-    localOutputCreateCommand,
-    downloadCommand,
-  ];
+  return [remotePrepCommand, uploadCommand, remoteBuildCommand, localOutputCreateCommand, downloadCommand];
 }
 
 export function createRunCommands(options: RunCommandOptions): string[] {

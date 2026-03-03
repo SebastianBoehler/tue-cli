@@ -41,6 +41,7 @@ export async function handleBuildCommand(
       artifactPath: buildSettings.artifactPath,
       outputDir: buildSettings.outputDir,
       keepRemote: buildSettings.keepRemote,
+      noDownload: buildSettings.noDownload,
     });
   } else if (supportsInteractivePrompts()) {
     selectedMachine = await selectMachine();
@@ -55,6 +56,7 @@ export async function handleBuildCommand(
       artifactPath: buildSettings.artifactPath,
       outputDir: buildSettings.outputDir,
       keepRemote: buildSettings.keepRemote,
+      noDownload: buildSettings.noDownload,
     });
   } else {
     commands = [
@@ -69,6 +71,7 @@ export async function handleBuildCommand(
         artifactPath: buildSettings.artifactPath,
         outputDir: buildSettings.outputDir,
         keepRemote: buildSettings.keepRemote,
+        noDownload: buildSettings.noDownload,
       }),
     ];
   }
