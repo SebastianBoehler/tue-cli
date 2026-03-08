@@ -47,6 +47,13 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
   }
 
   const config = resolveConfig(flags, Bun.env);
+  printGatewayGuidance(config.gateway);
+  printActiveIdentity(config);
+
+  if (command === "whoami") {
+    return;
+  }
+
   maybeRememberUser(config.user, config.dryRun);
   if (config.machine) {
     try {

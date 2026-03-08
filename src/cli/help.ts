@@ -3,6 +3,7 @@ export function printHelp(): void {
 
 Usage:
   tue
+  tue whoami [--user <name>] [--gateway <host>]
   tue build [<local_path>] [--machine <hostname>] [--project-name <name>] [--build-cmd "<cmd>"] [--preset <debug|release|relwithdebinfo>] [--artifact-path <path>] [--output-dir <dir>] [--no-download] [--log-file <path>] [--dry-run]
   tue run [<local_path>] --cmd "<command>" [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--cuda-devices <list>] [--detach] [--keep-remote] [--log-file <path>] [--dry-run]
   tue run logs [--run-id <id>] [--machine <hostname>] [--lines <n>] [--follow] [--log-file <path>] [--dry-run]

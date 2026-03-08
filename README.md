@@ -143,6 +143,8 @@ tue connect vnc --machine cgpool1907 --display 2 --local-port 5902
 tue connect vnc --machine cgpool1907 --display 2 --vnc-vm plasma
 tue sync . --machine cgpool1907
 tue sync . --machine cgpool1907 --watch
+tue whoami
+tue whoami --user boehlerse --gateway sshgw.cs.uni-tuebingen.de
 tue cuda info --machine cgpool1907
 tue cuda select --machine cgpool1907
 tue run . --machine cgpool1907 --cmd "python3 train.py"
