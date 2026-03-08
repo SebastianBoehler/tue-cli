@@ -5,8 +5,11 @@ import { promptInput, selectMenuOption, supportsInteractivePrompts } from "../ui
 import { execute, executeCapture } from "./execution";
 import { ensureMachine } from "./helpers";
 import {
+  buildCudaBenchmarkRemoteCommand,
   buildCudaInfoRemoteCommand,
   buildCudaListRemoteCommand,
+  buildCudaProfileRemoteCommand,
+  buildCudaVerifyRemoteCommand,
   normalizeCudaDevices,
   resolveCudaDevices,
 } from "./settings";
@@ -68,16 +71,93 @@ function parseCudaGpuList(output: string): CudaGpuInfo[] {
     .sort((left, right) => left.index - right.index);
 }
 
+function resolveTargetMachine(
+  config: ResolvedConfig,
+  machineOverride?: string,
+): Promise<string> | string {
+  if (machineOverride) {
+    return ensureMachine(machineOverride);
+  }
+
+  if (config.machine) {
+    return ensureMachine(config.machine);
+  }
+
+  return selectMachine();
+}
+
+function parsePositiveIntegerFlag(
+  rawValue: string | undefined,
+  flagName: string,
+  minimum = 1,
+): number | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed || !/^\d+$/.test(trimmed)) {
+    throw new Error(`Invalid ${flagName}: use an integer >= ${minimum}.`);
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed) || parsed < minimum) {
+    if (minimum <= 0) {
+      throw new Error(`Invalid ${flagName}: use an integer >= ${minimum}.`);
+    }
+    throw new Error(`Invalid ${flagName}: use an integer >= ${minimum}.`);
+  }
+
+  return parsed;
+}
+
+function parseBooleanFlag(
+  rawValue: string | undefined,
+  flagName: string,
+): boolean | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  const normalized = rawValue.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(
+    `Invalid ${flagName}: use true|false (or 1|0, yes|no, on|off).`,
+  );
+}
+
+function executeCudaCommand(
+  config: ResolvedConfig,
+  machine: string,
+  remoteCommand: string,
+  cudaDevices: string | undefined,
+  options?: CommandRuntimeOptions,
+): void {
+  warnOnRestrictedMachine(machine);
+  execute(
+    buildPoolCommand({
+      username: config.user,
+      gateway: config.gateway,
+      machine,
+      remoteCommand: applyCudaDevicesToCommand(remoteCommand, cudaDevices),
+    }),
+    config.dryRun,
+    options,
+  );
+}
+
 export async function runCudaInfo(
   config: ResolvedConfig,
   options?: CommandRuntimeOptions,
   machineOverride?: string,
 ): Promise<void> {
-  const machine = machineOverride
-    ? ensureMachine(machineOverride)
-    : config.machine
-      ? ensureMachine(config.machine)
-      : await selectMachine();
+  const machine = await resolveTargetMachine(config, machineOverride);
   warnOnRestrictedMachine(machine);
 
   execute(
@@ -99,18 +179,7 @@ export function runRemoteCommand(
   options?: CommandRuntimeOptions,
 ): void {
   const machine = ensureMachine(config.machine);
-  warnOnRestrictedMachine(machine);
-
-  execute(
-    buildPoolCommand({
-      username: config.user,
-      gateway: config.gateway,
-      machine,
-      remoteCommand: applyCudaDevicesToCommand(remoteCommand, cudaDevices),
-    }),
-    config.dryRun,
-    options,
-  );
+  executeCudaCommand(config, machine, remoteCommand, cudaDevices, options);
 }
 
 export async function runCudaSelect(
@@ -119,11 +188,7 @@ export async function runCudaSelect(
   options?: CommandRuntimeOptions,
   machineOverride?: string,
 ): Promise<void> {
-  const machine = machineOverride
-    ? ensureMachine(machineOverride)
-    : config.machine
-      ? ensureMachine(config.machine)
-      : await selectMachine();
+  const machine = await resolveTargetMachine(config, machineOverride);
   warnOnRestrictedMachine(machine);
 
   const listCommand = buildPoolCommand({
@@ -211,5 +276,72 @@ export async function runCudaSelect(
   );
   console.log(
     `Use with remote run: tue remote run --machine ${machine} --cmd "<your command>" --cuda-devices ${selectedDevices}`,
+  );
+}
+
+export async function runCudaVerify(
+  config: ResolvedConfig,
+  flags: FlagMap,
+  options?: CommandRuntimeOptions,
+  machineOverride?: string,
+): Promise<void> {
+  const machine = await resolveTargetMachine(config, machineOverride);
+  const remoteCommand = buildCudaVerifyRemoteCommand({
+    command: flags.cmd,
+    workdir: flags.workdir,
+  });
+  executeCudaCommand(
+    config,
+    machine,
+    remoteCommand,
+    resolveCudaDevices(flags, Bun.env),
+    options,
+  );
+}
+
+export async function runCudaProfile(
+  config: ResolvedConfig,
+  flags: FlagMap,
+  options?: CommandRuntimeOptions,
+  machineOverride?: string,
+): Promise<void> {
+  const machine = await resolveTargetMachine(config, machineOverride);
+  const remoteCommand = buildCudaProfileRemoteCommand({
+    command: flags.cmd,
+    workdir: flags.workdir,
+    binaryPath: flags["nsys-bin"],
+    outputPrefix: flags["nsys-output"],
+    trace: flags["nsys-trace"],
+    stats: parseBooleanFlag(flags["nsys-stats"], "nsys-stats"),
+    exportSqlite: parseBooleanFlag(flags["nsys-sqlite"], "nsys-sqlite"),
+  });
+  executeCudaCommand(
+    config,
+    machine,
+    remoteCommand,
+    resolveCudaDevices(flags, Bun.env),
+    options,
+  );
+}
+
+export async function runCudaBenchmark(
+  config: ResolvedConfig,
+  flags: FlagMap,
+  options?: CommandRuntimeOptions,
+  machineOverride?: string,
+): Promise<void> {
+  const machine = await resolveTargetMachine(config, machineOverride);
+  const remoteCommand = buildCudaBenchmarkRemoteCommand({
+    command: flags.cmd,
+    workdir: flags.workdir,
+    runs: parsePositiveIntegerFlag(flags.runs, "runs", 1),
+    warmup: parsePositiveIntegerFlag(flags.warmup, "warmup", 0),
+  });
+  executeCudaCommand(
+    config,
+    machine,
+    remoteCommand,
+    resolveCudaDevices(flags, Bun.env),
+    options,
   );
 }

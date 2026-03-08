@@ -33,7 +33,14 @@ import { resolveCudaDevices } from "./settings";
 import {
   runEmptyRemoteTrash,
 } from "./workflows";
-import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
+import {
+  runCudaBenchmark,
+  runCudaInfo,
+  runCudaProfile,
+  runCudaSelect,
+  runCudaVerify,
+  runRemoteCommand,
+} from "./cuda";
 import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { runConnectMode } from "./connect";
 import { applyPositionalDisplayFlags } from "./positionals";
@@ -63,8 +70,6 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
     }
   }
   const logFile = flags["log-file"];
-  printGatewayGuidance(config.gateway);
-  printActiveIdentity(config);
 
   switch (command) {
     case "connect": {
@@ -97,12 +102,36 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
     }
 
     case "cuda": {
-      if (subcommand && subcommand !== "info" && subcommand !== "select") {
-        throw new Error("Unknown cuda subcommand. Use: cuda info | cuda select");
+      if (
+        subcommand &&
+        subcommand !== "info" &&
+        subcommand !== "select" &&
+        subcommand !== "verify" &&
+        subcommand !== "profile" &&
+        subcommand !== "benchmark"
+      ) {
+        throw new Error(
+          "Unknown cuda subcommand. Use: cuda info | cuda select | cuda verify | cuda profile | cuda benchmark",
+        );
       }
 
       if (subcommand === "select") {
         await runCudaSelect(config, flags, { logFile });
+        return;
+      }
+
+      if (subcommand === "verify") {
+        await runCudaVerify(config, flags, { logFile });
+        return;
+      }
+
+      if (subcommand === "profile") {
+        await runCudaProfile(config, flags, { logFile });
+        return;
+      }
+
+      if (subcommand === "benchmark") {
+        await runCudaBenchmark(config, flags, { logFile });
         return;
       }
 

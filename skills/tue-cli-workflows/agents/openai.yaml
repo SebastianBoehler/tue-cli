@@ -1,0 +1,4 @@
+interface:
+  display_name: "TUE CLI Workflows"
+  short_description: "Help with TUE CLI remote workflows"
+  default_prompt: "Use $tue-cli-workflows to choose the right `tue` command sequence for this WSI/CG task."

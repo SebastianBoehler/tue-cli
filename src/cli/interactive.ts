@@ -11,7 +11,14 @@ import {
   runSync,
   runEmptyRemoteTrash,
 } from "./workflows";
-import { runCudaInfo, runCudaSelect, runRemoteCommand } from "./cuda";
+import {
+  runCudaBenchmark,
+  runCudaInfo,
+  runCudaProfile,
+  runCudaSelect,
+  runCudaVerify,
+  runRemoteCommand,
+} from "./cuda";
 import { resolveCudaDevices } from "./settings";
 import { runVncKill, runVncStartOrReuse } from "./vnc";
 import { closeLocalSshTunnels } from "./tunnels";
@@ -54,6 +61,18 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
       { value: "sync", label: "Sync local project to remote machine" },
       { value: "cuda-info", label: "Show CUDA/GPU info on machine" },
       { value: "cuda-select", label: "List GPUs and select CUDA device(s)" },
+      {
+        value: "cuda-verify",
+        label: "Run custom kernel verification command",
+      },
+      {
+        value: "cuda-profile",
+        label: "Profile with Nsight Systems (nsys)",
+      },
+      {
+        value: "cuda-benchmark",
+        label: "Benchmark custom kernel command (repeated runs)",
+      },
       { value: "storage-check", label: "Check remote storage/quota usage" },
       { value: "trash-empty", label: "Empty remote trash (~/.local/share/Trash)" },
       { value: "machines", label: "List known machines + pool-smi status" },
@@ -208,6 +227,58 @@ export async function runInteractive(flags: FlagMap): Promise<void> {
 
   if (action === "cuda-select") {
     await runCudaSelect(config, flags, { logFile }, await selectMachine(config.machine));
+    return;
+  }
+
+  if (action === "cuda-verify") {
+    const machine = await selectMachine(config.machine);
+    const cmd = await promptInput(
+      "Verification command",
+      "ctest --output-on-failure",
+    );
+    const workdir = await promptInput("Remote workdir (optional)", "");
+    const verifyFlags = { ...flags, cmd, ...(workdir ? { workdir } : {}) };
+    await runCudaVerify(config, verifyFlags, { logFile }, machine);
+    return;
+  }
+
+  if (action === "cuda-profile") {
+    const machine = await selectMachine(config.machine);
+    const cmd = await promptInput(
+      "Command to profile with nsys",
+      "./build/your_binary",
+    );
+    const workdir = await promptInput("Remote workdir (optional)", "");
+    const nsysBin = await promptInput("Nsight binary path (optional)", "");
+    const nsysOutput = await promptInput("Nsight output prefix", "tue-nsys-profile");
+    const profileFlags = {
+      ...flags,
+      cmd,
+      ...(nsysBin ? { "nsys-bin": nsysBin } : {}),
+      "nsys-output": nsysOutput,
+      ...(workdir ? { workdir } : {}),
+    };
+    await runCudaProfile(config, profileFlags, { logFile }, machine);
+    return;
+  }
+
+  if (action === "cuda-benchmark") {
+    const machine = await selectMachine(config.machine);
+    const cmd = await promptInput(
+      "Benchmark command",
+      "./your_benchmark_binary",
+    );
+    const runs = await promptInput("Number of benchmark runs", "10");
+    const warmup = await promptInput("Number of warmup runs", "2");
+    const workdir = await promptInput("Remote workdir (optional)", "");
+    const benchmarkFlags = {
+      ...flags,
+      cmd,
+      runs,
+      warmup,
+      ...(workdir ? { workdir } : {}),
+    };
+    await runCudaBenchmark(config, benchmarkFlags, { logFile }, machine);
     return;
   }
 

@@ -14,6 +14,7 @@ Interactive CLI for WSI/CG remote workflows with a single entry point:
 - upload + run local project/script remotely
 - incremental project sync to remote machine
 - CUDA/GPU environment info command
+- CUDA verification/profiling/benchmark helpers for custom kernel workflows
 - detached run mode with persisted run IDs/log lookup
 - Slurm job submit/status/cancel/log tail helpers
 - storage/quota check command
@@ -82,6 +83,8 @@ Supported env vars:
 - `TUE_KEEP_REMOTE`
 - `TUE_NO_DOWNLOAD`
 
+If `--remote-root` and `TUE_REMOTE_ROOT` are both unset, `tue-cli` defaults to `~`.
+
 If `--user` and `TUE_USER` are both missing, `tue-cli` uses a global saved username
 profile from `~/.config/tue-cli/profiles.json` (or `$XDG_CONFIG_HOME/tue-cli/profiles.json`).
 Machine selections are also remembered globally and shown in a `Recently used machines`
@@ -116,8 +119,11 @@ Sync/logging notes:
 
 - `tue sync` uses `rsync` locally (required).
 - `tue sync --watch` keeps watching your local folder and automatically re-syncs on save/change (stop with `Ctrl+C`).
-- `--log-file <path>` appends terminal output to a local logfile for `build`, `run`, `sync`, `cuda info`, and `remote run`.
+- `--log-file <path>` appends terminal output to a local logfile for `build`, `run`, `sync`, `cuda info|verify|profile|benchmark`, and `remote run`.
 - use `--cuda-devices <list>` (or `TUE_CUDA_VISIBLE_DEVICES`) to scope CUDA programs to selected GPUs.
+- `tue cuda profile` uses Nsight Systems (`nsys`) to profile your `--cmd` target command, with fallback detection in common install paths if `nsys` is not in `PATH`.
+- `--nsys-sqlite true` exports SQLite via `nsys export` with cross-version flag compatibility.
+- use `--nsys-bin <path>` to pin a specific Nsight Systems binary when multiple versions are installed.
 - `tue run --detach` stores run metadata globally in `~/.config/tue-cli/runs.json` (or `$XDG_CONFIG_HOME/tue-cli/runs.json`).
 - remote paths for uploaded projects (`--remote-root` / `TUE_REMOTE_ROOT`) are restricted to:
   - `~/...`
@@ -147,6 +153,11 @@ tue whoami
 tue whoami --user boehlerse --gateway sshgw.cs.uni-tuebingen.de
 tue cuda info --machine cgpool1907
 tue cuda select --machine cgpool1907
+tue cuda verify --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "ctest --output-on-failure"
+tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192"
+tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --nsys-bin /graphics/opt/opt_Ubuntu24.04/cuda/toolkit_12.4.1/cuda/bin/nsys
+tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --nsys-output task2_profile --nsys-trace cuda,nvtx,osrt --nsys-sqlite true
+tue cuda benchmark --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --warmup 3 --runs 20
 tue run . --machine cgpool1907 --cmd "python3 train.py"
 tue run . --machine cgpool1907 --cmd "python3 train.py" --cuda-devices 0
 tue run . --machine cgpool1907 --cmd "python3 train.py --epochs 100" --detach

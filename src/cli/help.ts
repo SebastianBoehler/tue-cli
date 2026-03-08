@@ -8,7 +8,7 @@ Usage:
   tue run [<local_path>] --cmd "<command>" [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--cuda-devices <list>] [--detach] [--keep-remote] [--log-file <path>] [--dry-run]
   tue run logs [--run-id <id>] [--machine <hostname>] [--lines <n>] [--follow] [--log-file <path>] [--dry-run]
   tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--watch] [--keep-remote] [--log-file <path>] [--dry-run]
-  tue cuda <info|select> [--machine <hostname>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
+  tue cuda <info|select|verify|profile|benchmark> [--machine <hostname>] [--workdir <path>] [--cmd "<command>"] [--nsys-bin <path>] [--nsys-output <prefix>] [--nsys-trace <targets>] [--nsys-stats <true|false>] [--nsys-sqlite <true|false>] [--runs <n>] [--warmup <n>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
   tue connect [shell|tunnel|vnc] [--machine <hostname>] [--display <n>] [--vnc-vm <name>] [--local-port <port>] [--user <name>] [--dry-run]
   tue storage check [--machine <hostname>] [--log-file <path>] [--dry-run]
   tue job submit --cmd "<command>" [--machine <hostname>] [--name <job-name>] [--partition <name>] [--time <HH:MM:SS>] [--gpus <n>] [--cpus <n>] [--mem <size>] [--workdir <path>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]

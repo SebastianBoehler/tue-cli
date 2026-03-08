@@ -55,7 +55,7 @@ type SyncMachineSelectionCommandOptions = Omit<SyncCommandOptions, "machine"> & 
 
 function normalizeRemoteRoot(pathValue: string): string {
   if (!pathValue) {
-    return "~/exercise00";
+    return "~";
   }
 
   return trimTrailingSlashes(pathValue);
