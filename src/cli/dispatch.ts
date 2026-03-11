@@ -48,6 +48,11 @@ import { handleUserCommand } from "./user-command";
 import { runJobCancel, runJobLogs, runJobStatus, runJobSubmit } from "./jobs";
 import { runDetachedRunLogs } from "./runs";
 import { runStorageCheck } from "./storage";
+import {
+  approveKernelResearchRun,
+  printKernelResearchStatus,
+  runKernelResearch,
+} from "./kernel-research";
 async function handleCommand(command: string, subcommand: string | undefined, flags: FlagMap): Promise<void> {
   if (!flags.user) {
     flags.user = await resolveUserFlag(flags, Bun.env);
@@ -136,6 +141,28 @@ async function handleCommand(command: string, subcommand: string | undefined, fl
       }
 
       await runCudaInfo(config, { logFile });
+      return;
+    }
+
+    case "kernel-research": {
+      const action = subcommand ?? "run";
+      if (action !== "run" && action !== "status" && action !== "approve") {
+        throw new Error(
+          "Unknown kernel-research subcommand. Use: kernel-research run | kernel-research status | kernel-research approve",
+        );
+      }
+
+      if (action === "status") {
+        printKernelResearchStatus(flags);
+        return;
+      }
+
+      if (action === "approve") {
+        approveKernelResearchRun(flags, config.dryRun);
+        return;
+      }
+
+      runKernelResearch(config, flags, { logFile });
       return;
     }
 

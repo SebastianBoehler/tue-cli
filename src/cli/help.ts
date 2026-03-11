@@ -9,6 +9,7 @@ Usage:
   tue run logs [--run-id <id>] [--machine <hostname>] [--lines <n>] [--follow] [--log-file <path>] [--dry-run]
   tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--watch] [--keep-remote] [--log-file <path>] [--dry-run]
   tue cuda <info|select|verify|profile|benchmark> [--machine <hostname>] [--workdir <path>] [--cmd "<command>"] [--nsys-bin <path>] [--nsys-output <prefix>] [--nsys-trace <targets>] [--nsys-stats <true|false>] [--nsys-sqlite <true|false>] [--runs <n>] [--warmup <n>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
+  tue kernel-research <run|status|approve> [--project-root <path>] [--editable-paths <csv>] [--benchmark-cmd "<cmd>"] [--verify-cmd "<cmd>"] [--profile-cmd "<cmd>"] [--profile-report-path <path>] [--hotspot-map-path <path>] [--profile-report-format <auto|json>] [--build-cmd "<cmd>"] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--llm-model <provider/model>] [--python-bin <path>] [--tue-bin <cmd>] [--artifacts-root <path>] [--max-iterations <n>] [--run-id <id>] [--manifest-path <path>] [--yes] [--log-file <path>] [--dry-run]
   tue connect [shell|tunnel|vnc] [--machine <hostname>] [--display <n>] [--vnc-vm <name>] [--local-port <port>] [--user <name>] [--dry-run]
   tue storage check [--machine <hostname>] [--log-file <path>] [--dry-run]
   tue job submit --cmd "<command>" [--machine <hostname>] [--name <job-name>] [--partition <name>] [--time <HH:MM:SS>] [--gpus <n>] [--cpus <n>] [--mem <size>] [--workdir <path>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
@@ -27,6 +28,7 @@ Notes:
   - Running just "tue" opens the interactive menu (single entry point).
   - For VNC forwarding, remote port is always 5900 + display; local port can be any free port.
   - Allowed remote-root prefixes: ~/..., /home/..., /graphics/scratch2/students/..., /graphics/scratch3/staff/..., /ceph/..., /var/tmp/...
+  - Kernel research runs require OPENROUTER_API_KEY locally; the LLM runs locally while profiling/build/benchmark commands execute through tue on the target machine.
 
 Config sources (priority):
   1) CLI flags

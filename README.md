@@ -124,6 +124,10 @@ Sync/logging notes:
 - `tue cuda profile` uses Nsight Systems (`nsys`) to profile your `--cmd` target command, with fallback detection in common install paths if `nsys` is not in `PATH`.
 - `--nsys-sqlite true` exports SQLite via `nsys export` with cross-version flag compatibility.
 - use `--nsys-bin <path>` to pin a specific Nsight Systems binary when multiple versions are installed.
+- `tue kernel-research run` launches a local ADK control loop for Triton/CUDA kernel optimization. The LLM stays local and uses `OPENROUTER_API_KEY`; remote machines only run trusted sync/build/profile/verify/benchmark commands through `tue`.
+- pass `--profile-report-path <relative/path.json>` when your profiling command writes a structured JSON report on the remote project. The runner fetches it, parses hotspot rankings, and maps them onto your editable Triton/CUDA files before the ADK planner chooses a target.
+- pass `--hotspot-map-path <relative/path.json>` to provide explicit hotspot-to-file mappings when kernel names do not naturally line up with file names. The mapping file stays local in the project and is copied into the scratch workspace.
+- kernel research runs copy your project into a scratch workspace under `.tue-kernel-research/runs/<id>/workspace/`, save all candidate artifacts, and require explicit `tue kernel-research approve --run-id <id> --yes` before promoting a winning candidate back into your real project tree.
 - `tue run --detach` stores run metadata globally in `~/.config/tue-cli/runs.json` (or `$XDG_CONFIG_HOME/tue-cli/runs.json`).
 - remote paths for uploaded projects (`--remote-root` / `TUE_REMOTE_ROOT`) are restricted to:
   - `~/...`
@@ -158,6 +162,9 @@ tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd 
 tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --nsys-bin /graphics/opt/opt_Ubuntu24.04/cuda/toolkit_12.4.1/cuda/bin/nsys
 tue cuda profile --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --nsys-output task2_profile --nsys-trace cuda,nvtx,osrt --nsys-sqlite true
 tue cuda benchmark --machine cgpool1907 --workdir '/home/<user>/my-kernels' --cmd "./build/my_kernel_bench --size 8192" --warmup 3 --runs 20
+tue kernel-research run --machine cgpool1907 --project-root . --editable-paths kernels/matmul.py,src/my_kernel.cu --benchmark-cmd "./build/my_kernel_bench --size 8192" --verify-cmd "ctest --output-on-failure" --build-cmd "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j" --profile-cmd "python scripts/profile_model.py --emit-json" --profile-report-path workspace/profile_report.json --hotspot-map-path hotspot-map.json --llm-model openrouter/anthropic/claude-3.7-sonnet
+tue kernel-research status --run-id <id>
+tue kernel-research approve --run-id <id> --yes
 tue run . --machine cgpool1907 --cmd "python3 train.py"
 tue run . --machine cgpool1907 --cmd "python3 train.py" --cuda-devices 0
 tue run . --machine cgpool1907 --cmd "python3 train.py --epochs 100" --detach
@@ -203,6 +210,38 @@ Build presets:
 bun run lint
 bun test
 bun run check
+```
+
+## Kernel Research Prerequisites
+
+Install the Python control-plane dependencies once:
+
+```bash
+python3 -m pip install -r requirements-kernel-research.txt
+```
+
+Set your provider key locally before running the workflow:
+
+```bash
+export OPENROUTER_API_KEY=...
+```
+
+Structured profile reports should be JSON and may use either:
+
+```json
+{"hotspots":[{"name":"triton_matmul","pct_total":61.2,"source_path":"kernels/matmul.py","op_type":"matmul"}]}
+```
+
+or AutoKernel-style keys such as:
+
+```json
+{"top_kernels":[{"kernel_name":"triton_matmul","pct_total":61.2,"source_path":"kernels/matmul.py","op_type":"matmul"}]}
+```
+
+Optional hotspot mapping files can be as simple as:
+
+```json
+{"mappings":{"matmul":"kernels/matmul.py","layernorm":"src/layernorm.cu"}}
 ```
 
 ## Git hooks

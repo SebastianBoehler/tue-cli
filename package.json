@@ -19,10 +19,12 @@
   },
   "files": [
     "dist",
+    "python",
     "skills",
     "README.md",
     "LICENSE",
-    ".env.example"
+    ".env.example",
+    "requirements-kernel-research.txt"
   ],
   "bin": {
     "tue": "dist/index.js"
