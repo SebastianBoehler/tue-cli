@@ -1,7 +1,7 @@
 {
   "name": "tue-wsi-cli",
   "version": "1.0.0",
-  "description": "CLI for recurring WSI workflows (pool machine discovery, VNC lifecycle, SSH tunneling)",
+  "description": "Interactive CLI for University of Tuebingen WSI/CG remote workflows",
   "type": "module",
   "license": "MIT",
   "author": "Sebastian Boehler",
@@ -13,7 +13,17 @@
     "url": "https://github.com/sebastianboehler/tue-cli/issues"
   },
   "homepage": "https://github.com/sebastianboehler/tue-cli#readme",
-  "keywords": ["cli", "ssh", "vnc", "gpu", "slurm", "remote", "wsituebingen"],
+  "keywords": [
+    "cli",
+    "ssh",
+    "vnc",
+    "gpu",
+    "cuda",
+    "slurm",
+    "remote",
+    "tuebingen",
+    "wsi"
+  ],
   "engines": {
     "bun": ">=1.0.0"
   },
@@ -21,7 +31,10 @@
     "dist",
     "python",
     "skills",
+    "docs",
     "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE",
     ".env.example",
     "requirements-kernel-research.txt"
