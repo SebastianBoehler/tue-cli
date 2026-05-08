@@ -1,13 +1,17 @@
+<div align="center">
+
 # tue-cli
 
 Interactive command-line tooling for University of Tuebingen WSI and Computer Graphics remote workflows.
-
-`tue-cli` gives students and researchers one `tue` command for SSH access, machine discovery, VNC sessions, remote sync/run workflows, CUDA inspection, Slurm helpers, and repeatable remote builds. It talks to live university machines through SSH and local tooling only. It does not ship mock infrastructure, hosted credential handling, or hidden remote services.
 
 ![Build](https://github.com/sebastianboehler/tue-cli/actions/workflows/build.yml/badge.svg?branch=main)
 ![Test](https://github.com/sebastianboehler/tue-cli/actions/workflows/test.yml/badge.svg?branch=main)
 ![Bun](https://img.shields.io/badge/bun-1.0%2B-f472b6?logo=bun&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-D22128.svg)
+
+</div>
+
+`tue-cli` gives students and researchers one `tue` command for SSH access, machine discovery, VNC sessions, remote sync/run workflows, CUDA inspection, Slurm helpers, and repeatable remote builds. It talks to live university machines through SSH and local tooling only. It does not ship mock infrastructure, hosted credential handling, or hidden remote services.
 
 ## Install
 
