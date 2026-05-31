@@ -2,7 +2,7 @@
 
 # tue-cli
 
-Interactive command-line tooling for University of Tuebingen WSI and Computer Graphics remote workflows.
+Remote lab and GPU cluster workflow tooling for students and researchers.
 
 ![Build](https://github.com/sebastianboehler/tue-cli/actions/workflows/build.yml/badge.svg?branch=main)
 ![Test](https://github.com/sebastianboehler/tue-cli/actions/workflows/test.yml/badge.svg?branch=main)
@@ -11,7 +11,7 @@ Interactive command-line tooling for University of Tuebingen WSI and Computer Gr
 
 </div>
 
-`tue-cli` gives students and researchers one `tue` command for SSH access, machine discovery, VNC sessions, remote sync/run workflows, CUDA inspection, Slurm helpers, and repeatable remote builds. It talks to live university machines through SSH and local tooling only. It does not ship mock infrastructure, hosted credential handling, or hidden remote services.
+`tue-cli` gives students and researchers one `tue` command for SSH access, machine discovery, VNC sessions, remote sync/run workflows, CUDA inspection, Slurm helpers, and repeatable remote builds. It ships with University of Tuebingen WSI/CG defaults, but it also supports saved cluster profiles for other university or lab environments. It talks to live machines through SSH and local tooling only; it does not ship mock infrastructure, hosted credential handling, or hidden remote services.
 
 ## Install
 
@@ -34,6 +34,8 @@ tue
 
 ## What It Does
 
+- Run guided onboarding with `tue init` and verify your setup with `tue doctor`.
+- Save reusable cluster profiles for custom gateways, machine pools, VNC defaults, and remote roots.
 - Discover and select WSI/CG machines from the known pool and compute catalog.
 - Open SSH shells through the configured gateway.
 - Start, list, connect to, and stop VNC sessions.
@@ -58,7 +60,14 @@ The CLI never accepts university passwords through environment variables. SSH au
 
 ## Configuration
 
-Copy the example file and adjust it locally:
+Run onboarding once:
+
+```bash
+tue init
+tue doctor
+```
+
+Or copy the example file and adjust it locally:
 
 ```bash
 cp .env.example .env
@@ -68,13 +77,14 @@ Configuration priority:
 
 1. CLI flags
 2. `.env` and process environment variables
-3. Saved user and machine profiles under `~/.config/tue-cli`
+3. Saved cluster, user, and machine profiles under `~/.config/tue-cli`
 
 Common variables:
 
 | Variable | Purpose |
 | --- | --- |
 | `TUE_USER` | Default university/WSI username |
+| `TUE_CLUSTER` | Saved cluster profile to use |
 | `TUE_GATEWAY` | SSH jump host, for example `sshgw.cs.uni-tuebingen.de` |
 | `TUE_MACHINE` | Default target machine |
 | `TUE_DISPLAY` | Default VNC display number |
@@ -83,6 +93,19 @@ Common variables:
 | `TUE_REMOTE_ROOT` | Remote upload/build root |
 
 See [`.env.example`](./.env.example) for the complete set of supported variables.
+
+## 60-Second Demo
+
+```bash
+tue init --user alice --cluster lab --gateway sshgw.example.org --machines gpu01,gpu02 --default-machine gpu01 --remote-root ~/remote
+tue doctor --cluster lab
+tue machines list --cluster lab
+tue sync . --cluster lab --dry-run
+tue run . --cluster lab --cmd "python3 train.py" --dry-run
+tue job submit --cluster lab --cmd "python3 train.py" --gpus 1 --time 02:00:00 --dry-run
+```
+
+See [Demo](./docs/demo.md) and [Examples](./docs/examples.md) for copyable workflows.
 
 ## Quick Usage
 
@@ -107,6 +130,21 @@ tue build . --machine cgpool1907 --preset release
 ```
 
 See [Command Reference](./docs/commands.md) for the full command list.
+
+## Adapting Another Cluster
+
+Use `tue init` or `tue clusters add` to save a lab profile:
+
+```bash
+tue clusters add \
+  --name my-lab \
+  --gateway login.example.edu \
+  --machines gpu01,gpu02,gpu03 \
+  --default-machine gpu01 \
+  --remote-root ~/remote
+```
+
+After that, every command can use `--cluster my-lab` or `TUE_CLUSTER=my-lab`. The profile supplies the gateway, default machine, VNC mode, and remote root unless a CLI flag or environment variable overrides it.
 
 ## Connectivity Model
 

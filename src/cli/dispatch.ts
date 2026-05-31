@@ -53,6 +53,9 @@ import {
   printKernelResearchStatus,
   runKernelResearch,
 } from "./kernel-research";
+import { handleClusterCommand } from "./clusters";
+import { createDoctorReport, printDoctorReport } from "../doctor";
+import { runInitCommand } from "./init";
 async function handleCommand(command: string, subcommand: string | undefined, flags: FlagMap): Promise<void> {
   if (!flags.user) {
     flags.user = await resolveUserFlag(flags, Bun.env);
@@ -356,6 +359,21 @@ export async function runCli(argv: string[] = Bun.argv.slice(2)): Promise<void> 
 
   if (parsed.command === "user") {
     await handleUserCommand(parsed.subcommand, flags);
+    return;
+  }
+
+  if (parsed.command === "init") {
+    await runInitCommand(flags);
+    return;
+  }
+
+  if (parsed.command === "doctor") {
+    printDoctorReport(createDoctorReport(flags, Bun.env));
+    return;
+  }
+
+  if (parsed.command === "clusters") {
+    handleClusterCommand(parsed.subcommand, flags);
     return;
   }
 

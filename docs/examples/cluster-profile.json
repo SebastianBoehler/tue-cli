@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "clusters": [
+    {
+      "name": "vision-lab",
+      "gateway": "login.vision.example.edu",
+      "machines": ["gpu01", "gpu02", "gpu03"],
+      "defaultMachine": "gpu01",
+      "remoteRoot": "~/remote",
+      "vncVm": "xfce"
+    }
+  ],
+  "defaultCluster": "vision-lab"
+}

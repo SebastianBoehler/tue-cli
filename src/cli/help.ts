@@ -10,6 +10,9 @@ Usage:
   tue sync [<local_path>] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--watch] [--keep-remote] [--log-file <path>] [--dry-run]
   tue cuda <info|select|verify|profile|benchmark> [--machine <hostname>] [--workdir <path>] [--cmd "<command>"] [--nsys-bin <path>] [--nsys-output <prefix>] [--nsys-trace <targets>] [--nsys-stats <true|false>] [--nsys-sqlite <true|false>] [--runs <n>] [--warmup <n>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
   tue kernel-research <run|status|approve> [--project-root <path>] [--editable-paths <csv>] [--benchmark-cmd "<cmd>"] [--verify-cmd "<cmd>"] [--profile-cmd "<cmd>"] [--profile-report-path <path>] [--hotspot-map-path <path>] [--profile-report-format <auto|json>] [--build-cmd "<cmd>"] [--machine <hostname>] [--project-name <name>] [--remote-root <dir>] [--llm-model <provider/model>] [--python-bin <path>] [--tue-bin <cmd>] [--artifacts-root <path>] [--max-iterations <n>] [--run-id <id>] [--manifest-path <path>] [--yes] [--log-file <path>] [--dry-run]
+  tue init [--user <name>] [--cluster <name>] [--gateway <host>] [--machines <csv>] [--default-machine <hostname>] [--remote-root <dir>] [--vnc-vm <name>]
+  tue doctor [--cluster <name>] [--user <name>] [--gateway <host>] [--machine <hostname>]
+  tue clusters <list|show|add|select> [--name <name>] [--gateway <host>] [--machines <csv>] [--default-machine <hostname>] [--remote-root <dir>] [--vnc-vm <name>]
   tue connect [shell|tunnel|vnc] [--machine <hostname>] [--display <n>] [--vnc-vm <name>] [--local-port <port>] [--user <name>] [--dry-run]
   tue storage check [--machine <hostname>] [--log-file <path>] [--dry-run]
   tue job submit --cmd "<command>" [--machine <hostname>] [--name <job-name>] [--partition <name>] [--time <HH:MM:SS>] [--gpus <n>] [--cpus <n>] [--mem <size>] [--workdir <path>] [--cuda-devices <list>] [--log-file <path>] [--dry-run]
@@ -26,6 +29,7 @@ Usage:
 
 Notes:
   - Running just "tue" opens the interactive menu (single entry point).
+  - Run "tue init" once to save a username and reusable cluster profile.
   - For VNC forwarding, remote port is always 5900 + display; local port can be any free port.
   - Allowed remote-root prefixes: ~/..., /home/..., /graphics/scratch2/students/..., /graphics/scratch3/staff/..., /ceph/..., /var/tmp/...
   - Kernel research runs require OPENROUTER_API_KEY locally; the LLM runs locally while profiling/build/benchmark commands execute through tue on the target machine.
@@ -33,9 +37,10 @@ Notes:
 Config sources (priority):
   1) CLI flags
   2) .env / environment variables
+  3) saved cluster profile from tue init / tue clusters select
 
 Supported environment variables:
-  TUE_USER, TUE_GATEWAY, TUE_MACHINE, TUE_DISPLAY, TUE_VNC_VM, TUE_LOCAL_PORT, TUE_DRY_RUN,
+  TUE_USER, TUE_CLUSTER, TUE_GATEWAY, TUE_MACHINE, TUE_DISPLAY, TUE_VNC_VM, TUE_LOCAL_PORT, TUE_DRY_RUN,
   TUE_CUDA_VISIBLE_DEVICES,
   TUE_REMOTE_ROOT, TUE_BUILD_CMD, TUE_BUILD_PRESET, TUE_ARTIFACT_PATH, TUE_BUILD_OUTPUT, TUE_PROJECT_NAME, TUE_KEEP_REMOTE, TUE_NO_DOWNLOAD
 `);

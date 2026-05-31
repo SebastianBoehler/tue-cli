@@ -21,11 +21,29 @@ tue user add --name boehlerse
 
 Profiles are stored under `~/.config/tue-cli/profiles.json` or `$XDG_CONFIG_HOME/tue-cli/profiles.json`.
 
+## Onboarding And Cluster Profiles
+
+```bash
+tue init
+tue init --user boehlerse --cluster tuebingen --gateway sshgw.cs.uni-tuebingen.de --machines cgpool1907,cgpool1908 --default-machine cgpool1907 --remote-root ~
+
+tue doctor
+tue doctor --cluster tuebingen
+
+tue clusters list
+tue clusters add --name lab --gateway sshgw.example.org --machines gpu01,gpu02 --default-machine gpu01 --remote-root ~/remote
+tue clusters select --name lab
+tue clusters show --name lab
+```
+
+Cluster profiles are stored under `~/.config/tue-cli/clusters.json` or `$XDG_CONFIG_HOME/tue-cli/clusters.json`. CLI flags and environment variables override saved profile values.
+
 ## Machines
 
 ```bash
 tue machines list
 tue machines list --live
+tue machines list --cluster lab
 ```
 
 Interactive terminals show a scrollable machine list. `--live` streams raw `pool-smi` output.

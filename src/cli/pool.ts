@@ -111,6 +111,14 @@ export async function runMachineList(
   config: ResolvedConfig,
   options?: { live?: boolean },
 ): Promise<void> {
+  if (config.cluster) {
+    console.log(`Cluster profile: ${config.cluster.name}`);
+    for (const machine of config.cluster.machines) {
+      console.log(`  - ${machine}`);
+    }
+    return;
+  }
+
   printMachinePolicySummary();
 
   if (options?.live) {

@@ -2,7 +2,7 @@ import pc from "picocolors";
 
 type MachineTier = "pool" | "compute" | "unknown";
 
-const MACHINE_NAME_PATTERN = /^[a-z0-9-]+$/;
+const MACHINE_NAME_PATTERN = /^[a-z0-9.-]+$/;
 
 function expandRange(
   prefix: string,

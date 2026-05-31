@@ -18,13 +18,20 @@ import { selectMachine } from "./user";
 import type { CommandRuntimeOptions, FlagMap } from "./types";
 import { startDetachedRun } from "./detached-run";
 
+function envWithConfigDefaults(config: ResolvedConfig): Record<string, string | undefined> {
+  return {
+    ...Bun.env,
+    TUE_REMOTE_ROOT: Bun.env.TUE_REMOTE_ROOT ?? config.remoteRoot,
+  };
+}
+
 export async function handleBuildCommand(
   config: ResolvedConfig,
   flags: FlagMap,
   localPath: string,
   options?: CommandRuntimeOptions,
 ): Promise<void> {
-  const buildSettings = resolveBuildSettings(flags, localPath, Bun.env);
+  const buildSettings = resolveBuildSettings(flags, localPath, envWithConfigDefaults(config));
   const machine = config.machine ? ensureMachine(config.machine) : undefined;
   let selectedMachine = machine;
   let commands: string[];
@@ -90,7 +97,7 @@ export async function handleRunCommand(
   options?: CommandRuntimeOptions,
 ): Promise<void> {
   const detached = parseTruthy(flags.detach);
-  const runSettings = resolveRunSettings(flags, localPath, Bun.env);
+  const runSettings = resolveRunSettings(flags, localPath, envWithConfigDefaults(config));
   const machine = config.machine ? ensureMachine(config.machine) : undefined;
   let selectedMachine = machine;
   let commands: string[];
@@ -174,7 +181,7 @@ export async function handleSyncCommand(
   options?: CommandRuntimeOptions,
 ): Promise<void> {
   const watchSync = parseTruthy(flags.watch);
-  const syncSettings = resolveSyncSettings(flags, localPath, Bun.env);
+  const syncSettings = resolveSyncSettings(flags, localPath, envWithConfigDefaults(config));
   const machine = config.machine ? ensureMachine(config.machine) : undefined;
   let selectedMachine = machine;
   let commands: string[];

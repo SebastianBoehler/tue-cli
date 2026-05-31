@@ -1,4 +1,9 @@
 import { DEFAULT_GATEWAY } from "./machines";
+import {
+  getClusterProfile,
+  getDefaultClusterProfile,
+  type ClusterProfile,
+} from "./cluster-profiles";
 
 export type ResolvedConfig = {
   user: string;
@@ -8,6 +13,8 @@ export type ResolvedConfig = {
   vncVm?: string;
   localPort: number;
   dryRun: boolean;
+  remoteRoot?: string;
+  cluster?: Pick<ClusterProfile, "name" | "machines">;
 };
 
 function parseBoolean(value: string | undefined): boolean {
@@ -62,18 +69,29 @@ export function resolveConfig(
   flags: Record<string, string>,
   env: Record<string, string | undefined>
 ): ResolvedConfig {
+  const cluster = flags.cluster
+    ? getClusterProfile(flags.cluster, env)
+    : env.TUE_CLUSTER
+      ? getClusterProfile(env.TUE_CLUSTER, env)
+      : getDefaultClusterProfile(env);
+
+  if ((flags.cluster || env.TUE_CLUSTER) && !cluster) {
+    throw new Error(`Unknown cluster profile: ${flags.cluster ?? env.TUE_CLUSTER}`);
+  }
+
   const user = flags.user ?? env.TUE_USER;
 
   if (!user) {
     throw new Error("Missing username. Pass --user or set TUE_USER.");
   }
 
-  const gateway = flags.gateway ?? env.TUE_GATEWAY ?? DEFAULT_GATEWAY;
-  const machine = flags.machine ?? env.TUE_MACHINE;
+  const gateway = flags.gateway ?? env.TUE_GATEWAY ?? cluster?.gateway ?? DEFAULT_GATEWAY;
+  const machine = flags.machine ?? env.TUE_MACHINE ?? cluster?.defaultMachine;
 
   const displayRaw = flags.display ?? env.TUE_DISPLAY ?? "1";
   const display = parseNonNegativeInt(displayRaw, "display");
-  const vncVm = parseVncVm(flags["vnc-vm"] ?? env.TUE_VNC_VM);
+  const vncVm = parseVncVm(flags["vnc-vm"] ?? env.TUE_VNC_VM ?? cluster?.vncVm);
+  const remoteRoot = flags["remote-root"] ?? env.TUE_REMOTE_ROOT ?? cluster?.remoteRoot;
 
   const localPortRaw = flags["local-port"] ?? env.TUE_LOCAL_PORT;
   const localPort = localPortRaw
@@ -90,5 +108,9 @@ export function resolveConfig(
     vncVm,
     localPort,
     dryRun,
+    remoteRoot,
+    cluster: cluster
+      ? { name: cluster.name, machines: cluster.machines }
+      : undefined,
   };
 }
