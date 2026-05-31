@@ -1,9 +1,12 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "bun:test";
 import { createKernelResearchManifest } from "../src/cli/kernel-research";
 import { rememberKernelResearchRun, findKernelResearchRun } from "../src/kernel-research-runs";
+
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function makeProject(): string {
   const root = mkdtempSync(join(tmpdir(), "tue-kernel-research-"));
@@ -113,10 +116,10 @@ print(json.dumps({"hotspots": hotspots, "ranked_targets": ranked["ranked_targets
 `;
 
     const result = Bun.spawnSync(["python3", "-c", code], {
-      cwd: "/Users/sebastianboehler/Documents/GitHub/tue-cli",
+      cwd: repoRoot,
       env: {
         ...process.env,
-        PYTHONPATH: "/Users/sebastianboehler/Documents/GitHub/tue-cli/python",
+        PYTHONPATH: join(repoRoot, "python"),
       },
       stdout: "pipe",
       stderr: "pipe",
